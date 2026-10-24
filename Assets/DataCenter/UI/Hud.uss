@@ -1,0 +1,475 @@
+/* Operator HUD. Values come from Tokens.uss; only layout lives here. */
+
+.dc-root {
+    flex-grow: 1;
+    color: var(--dc-text);
+    font-size: var(--dc-font-sm);
+}
+
+/* ---------- Shared building blocks ---------- */
+
+.dc-panel {
+    background-color: var(--dc-surface);
+    border-color: var(--dc-border);
+    border-width: 1px;
+    border-radius: var(--dc-radius-2);
+    padding: var(--dc-space-3);
+}
+
+.dc-panel__header {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--dc-space-2);
+}
+
+.dc-panel__title {
+    font-size: var(--dc-font-xs);
+    color: var(--dc-text-muted);
+    -unity-font-style: bold;
+    letter-spacing: 1.5px;
+}
+
+.dc-label-muted {
+    color: var(--dc-text-muted);
+    font-size: var(--dc-font-xs);
+}
+
+.dc-mono {
+    -unity-font-style: bold;
+}
+
+.dc-chip {
+    padding: 2px var(--dc-space-2);
+    border-radius: var(--dc-radius-pill);
+    font-size: var(--dc-font-xs);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    background-color: var(--dc-surface-raised);
+    color: var(--dc-text-muted);
+}
+
+.dc-chip--ok { background-color: var(--dc-ok-dim); color: var(--dc-ok); }
+.dc-chip--accent { background-color: var(--dc-accent-dim); color: var(--dc-accent); }
+.dc-chip--warn { background-color: var(--dc-warn-dim); color: var(--dc-warn); }
+.dc-chip--danger { background-color: var(--dc-danger-dim); color: var(--dc-danger); }
+
+.dc-bar {
+    height: 6px;
+    border-radius: var(--dc-radius-pill);
+    background-color: var(--dc-surface-sunken);
+    overflow: hidden;
+    flex-grow: 1;
+}
+
+.dc-bar__fill {
+    height: 100%;
+    width: 50%;
+    border-radius: var(--dc-radius-pill);
+    background-color: var(--dc-accent);
+}
+
+.dc-bar__fill--ok { background-color: var(--dc-ok); }
+.dc-bar__fill--warn { background-color: var(--dc-warn); }
+.dc-bar__fill--danger { background-color: var(--dc-danger); }
+
+.dc-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: var(--dc-radius-pill);
+    background-color: var(--dc-text-faint);
+    margin-right: var(--dc-space-2);
+}
+
+.dc-dot--ok { background-color: var(--dc-ok); }
+.dc-dot--accent { background-color: var(--dc-accent); }
+.dc-dot--warn { background-color: var(--dc-warn); }
+
+.dc-button {
+    background-color: var(--dc-surface-raised);
+    border-color: var(--dc-border-strong);
+    border-width: 1px;
+    border-radius: var(--dc-radius-1);
+    color: var(--dc-text);
+    font-size: var(--dc-font-xs);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    padding: var(--dc-space-1) var(--dc-space-3);
+    margin: 0;
+}
+
+.dc-button:hover {
+    border-color: var(--dc-accent);
+}
+
+.dc-button--active {
+    background-color: var(--dc-accent-dim);
+    border-color: var(--dc-accent);
+    color: var(--dc-accent);
+}
+
+/* ---------- Top bar ---------- */
+
+.dc-topbar {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    height: var(--dc-topbar-height);
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 var(--dc-space-4);
+    background-color: var(--dc-surface);
+    border-bottom-width: 1px;
+    border-color: var(--dc-border);
+}
+
+.dc-topbar__group {
+    flex-direction: row;
+    align-items: center;
+}
+
+.dc-topbar__group > * {
+    margin-right: var(--dc-space-4);
+}
+
+.dc-brand {
+    font-size: var(--dc-font-md);
+    -unity-font-style: bold;
+    letter-spacing: 2px;
+    color: var(--dc-text);
+}
+
+.dc-brand__accent {
+    color: var(--dc-accent);
+}
+
+.dc-stat {
+    flex-direction: row;
+    align-items: center;
+}
+
+.dc-stat__label {
+    color: var(--dc-text-muted);
+    font-size: var(--dc-font-xs);
+    margin-right: var(--dc-space-1);
+    letter-spacing: 1px;
+}
+
+.dc-stat__value {
+    -unity-font-style: bold;
+    font-size: var(--dc-font-sm);
+    min-width: 44px;
+}
+
+/* ---------- Columns ---------- */
+
+.dc-column {
+    position: absolute;
+    top: 56px;
+}
+
+.dc-column--left {
+    left: var(--dc-space-3);
+    width: var(--dc-column-left);
+}
+
+.dc-column--right {
+    right: var(--dc-space-3);
+    width: var(--dc-column-right);
+}
+
+.dc-column > .dc-panel {
+    margin-bottom: var(--dc-space-3);
+}
+
+/* ---------- Robot cards ---------- */
+
+.dc-robot-card {
+    background-color: var(--dc-surface-raised);
+    border-radius: var(--dc-radius-1);
+    border-left-width: 3px;
+    border-color: rgba(0, 0, 0, 0);
+    padding: var(--dc-space-2) var(--dc-space-3);
+    margin-bottom: var(--dc-space-2);
+}
+
+.dc-robot-card:hover {
+    background-color: rgba(40, 52, 68, 0.95);
+}
+
+.dc-robot-card--selected {
+    border-color: var(--dc-accent);
+}
+
+.dc-robot-card__row {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: var(--dc-space-1);
+}
+
+.dc-robot-card__name {
+    font-size: var(--dc-font-md);
+    -unity-font-style: bold;
+}
+
+.dc-robot-card__meta {
+    flex-direction: row;
+    align-items: center;
+}
+
+.dc-robot-card__battery {
+    width: 40px;
+    -unity-text-align: middle-right;
+    font-size: var(--dc-font-xs);
+    color: var(--dc-text-muted);
+}
+
+/* ---------- Work orders ---------- */
+
+.dc-order__id {
+    font-size: var(--dc-font-xs);
+    color: var(--dc-accent);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+}
+
+.dc-order__summary {
+    font-size: var(--dc-font-md);
+    white-space: normal;
+    margin: var(--dc-space-1) 0 var(--dc-space-2) 0;
+}
+
+.dc-order__endpoint {
+    flex-direction: row;
+    align-items: center;
+    background-color: var(--dc-surface-sunken);
+    border-radius: var(--dc-radius-1);
+    padding: var(--dc-space-2);
+    margin-bottom: var(--dc-space-1);
+}
+
+.dc-order__endpoint-label {
+    width: 40px;
+    color: var(--dc-text-muted);
+    font-size: var(--dc-font-xs);
+}
+
+.dc-order__endpoint-port {
+    -unity-font-style: bold;
+    flex-grow: 1;
+}
+
+.dc-order__stats {
+    flex-direction: row;
+    justify-content: space-between;
+    margin-top: var(--dc-space-2);
+}
+
+.dc-order__stat {
+    align-items: flex-start;
+}
+
+.dc-order__stat-value {
+    font-size: var(--dc-font-lg);
+    -unity-font-style: bold;
+}
+
+.dc-order-row {
+    flex-direction: row;
+    align-items: center;
+    padding: var(--dc-space-1) 0;
+}
+
+.dc-order-row__text {
+    font-size: var(--dc-font-xs);
+    color: var(--dc-text-muted);
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.dc-order-row--active .dc-order-row__text {
+    color: var(--dc-text);
+}
+
+.dc-progress-row {
+    flex-direction: row;
+    align-items: center;
+    margin-top: var(--dc-space-2);
+}
+
+.dc-progress-row > Label {
+    margin-left: var(--dc-space-2);
+    font-size: var(--dc-font-xs);
+    color: var(--dc-text-muted);
+}
+
+/* ---------- Deadman banner ---------- */
+
+.dc-deadman {
+    position: absolute;
+    bottom: var(--dc-space-5);
+    left: 50%;
+    translate: -50% 0;
+    flex-direction: row;
+    align-items: center;
+    padding: var(--dc-space-2) var(--dc-space-4);
+    border-radius: var(--dc-radius-pill);
+    background-color: var(--dc-surface);
+    border-width: 1px;
+    border-color: var(--dc-border-strong);
+    transition-property: background-color, border-color;
+    transition-duration: 0.12s;
+}
+
+.dc-deadman__key {
+    padding: 2px var(--dc-space-2);
+    border-radius: var(--dc-radius-1);
+    border-width: 1px;
+    border-color: var(--dc-border-strong);
+    font-size: var(--dc-font-xs);
+    -unity-font-style: bold;
+    margin-right: var(--dc-space-2);
+}
+
+.dc-deadman__text {
+    font-size: var(--dc-font-sm);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+}
+
+.dc-deadman--live {
+    background-color: var(--dc-ok-dim);
+    border-color: var(--dc-ok);
+}
+
+.dc-deadman--live .dc-deadman__text {
+    color: var(--dc-ok);
+}
+
+.dc-deadman--stopped {
+    background-color: var(--dc-danger-dim);
+    border-color: var(--dc-danger);
+}
+
+.dc-deadman--stopped .dc-deadman__text {
+    color: var(--dc-danger);
+}
+
+/* ---------- E-Stop ---------- */
+
+.dc-estop {
+    position: absolute;
+    right: var(--dc-space-4);
+    bottom: var(--dc-space-4);
+    align-items: center;
+}
+
+.dc-estop__button {
+    width: 104px;
+    height: 104px;
+    border-radius: 52px;
+    border-width: 7px;
+    border-color: var(--dc-estop-ring);
+    background-color: var(--dc-estop);
+    color: rgb(255, 255, 255);
+    font-size: var(--dc-font-md);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+    white-space: normal;
+    letter-spacing: 1px;
+    margin: 0;
+    padding: 0;
+    transition-property: scale, background-color;
+    transition-duration: 0.08s;
+}
+
+.dc-estop__button:hover {
+    scale: 1.04 1.04;
+}
+
+.dc-estop__button:active {
+    scale: 0.96 0.96;
+}
+
+.dc-estop__button--latched {
+    background-color: rgb(120, 12, 10);
+}
+
+.dc-estop__reset {
+    margin-top: var(--dc-space-2);
+    display: none;
+}
+
+.dc-estop--latched .dc-estop__reset {
+    display: flex;
+}
+
+/* ---------- Help ---------- */
+
+.dc-help {
+    position: absolute;
+    left: var(--dc-space-3);
+    bottom: var(--dc-space-3);
+    width: var(--dc-column-left);
+}
+
+.dc-help__row {
+    flex-direction: row;
+    margin-bottom: 2px;
+}
+
+.dc-help__key {
+    width: 96px;
+    color: var(--dc-accent);
+    font-size: var(--dc-font-xs);
+    -unity-font-style: bold;
+}
+
+.dc-help__action {
+    color: var(--dc-text-muted);
+    font-size: var(--dc-font-xs);
+    flex-shrink: 1;
+}
+
+.dc-help--collapsed .dc-help__body {
+    display: none;
+}
+
+/* ---------- Toasts ---------- */
+
+.dc-toasts {
+    position: absolute;
+    top: 56px;
+    left: 50%;
+    translate: -50% 0;
+    width: 460px;
+    align-items: stretch;
+}
+
+.dc-toast {
+    background-color: var(--dc-surface-raised);
+    border-left-width: 4px;
+    border-color: var(--dc-accent);
+    border-radius: var(--dc-radius-1);
+    padding: var(--dc-space-2) var(--dc-space-3);
+    margin-bottom: var(--dc-space-2);
+    font-size: var(--dc-font-sm);
+    white-space: normal;
+    opacity: 1;
+    transition-property: opacity, translate;
+    transition-duration: 0.25s;
+}
+
+.dc-toast--hidden {
+    opacity: 0;
+    translate: 0 -8px;
+}
+
+.dc-toast--success { border-color: var(--dc-ok); }
+.dc-toast--warning { border-color: var(--dc-warn); }
+.dc-toast--error { border-color: var(--dc-danger); }

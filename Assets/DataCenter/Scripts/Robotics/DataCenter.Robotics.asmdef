@@ -1,0 +1,9 @@
+{
+    "name": "DataCenter.Robotics",
+    "rootNamespace": "DataCenter.Robotics",
+    "references": [
+        "DataCenter.Core"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

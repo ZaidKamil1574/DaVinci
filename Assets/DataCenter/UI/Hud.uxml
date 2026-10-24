@@ -1,0 +1,120 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" editor-extension-mode="False">
+    <Style src="Tokens.uss" />
+    <Style src="Hud.uss" />
+    <ui:VisualElement name="root" class="dc-root" picking-mode="Ignore">
+
+        <!-- Top bar: identity on the left, link health in the middle, mode on the right -->
+        <ui:VisualElement name="topbar" class="dc-topbar">
+            <ui:VisualElement class="dc-topbar__group">
+                <ui:Label text="DC&lt;color=#19D3FF&gt;//&lt;/color&gt;TELEOP" class="dc-brand" enable-rich-text="true" />
+                <ui:Label name="section-label" text="SECTION A · SERVER HALL" class="dc-chip dc-chip--accent" />
+            </ui:VisualElement>
+            <ui:VisualElement class="dc-topbar__group">
+                <ui:VisualElement class="dc-stat">
+                    <ui:Label text="LINK" class="dc-stat__label" />
+                    <ui:Label name="link-latency" text="-- ms" class="dc-stat__value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="dc-stat">
+                    <ui:Label text="LOSS" class="dc-stat__label" />
+                    <ui:Label name="link-loss" text="0.0%" class="dc-stat__value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="dc-stat">
+                    <ui:Label text="CMD AGE" class="dc-stat__label" />
+                    <ui:Label name="link-age" text="-- ms" class="dc-stat__value" />
+                </ui:VisualElement>
+                <ui:VisualElement class="dc-stat">
+                    <ui:Label text="FPS" class="dc-stat__label" />
+                    <ui:Label name="fps" text="--" class="dc-stat__value" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="dc-topbar__group">
+                <ui:Button name="mode-direct" text="DIRECT" class="dc-button dc-button--active" />
+                <ui:Button name="mode-console" text="CONSOLE" class="dc-button" />
+                <ui:Label name="input-source" text="Keyboard + Mouse" class="dc-label-muted" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Left: fleet -->
+        <ui:VisualElement class="dc-column dc-column--left" picking-mode="Ignore">
+            <ui:VisualElement class="dc-panel">
+                <ui:VisualElement class="dc-panel__header">
+                    <ui:Label text="ROBOTS" class="dc-panel__title" />
+                    <ui:Label name="robot-count" text="0 online" class="dc-label-muted" />
+                </ui:VisualElement>
+                <ui:VisualElement name="robot-list" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Right: work orders -->
+        <ui:VisualElement class="dc-column dc-column--right" picking-mode="Ignore">
+            <ui:VisualElement class="dc-panel">
+                <ui:VisualElement class="dc-panel__header">
+                    <ui:Label text="WORK ORDER" class="dc-panel__title" />
+                    <ui:Label name="order-status" text="ACTIVE" class="dc-chip dc-chip--accent" />
+                </ui:VisualElement>
+                <ui:Label name="order-id" text="WO-A-001" class="dc-order__id" />
+                <ui:Label name="order-summary" text="-" class="dc-order__summary" />
+                <ui:VisualElement name="endpoint-from" class="dc-order__endpoint">
+                    <ui:VisualElement name="endpoint-from-dot" class="dc-dot" />
+                    <ui:Label text="FROM" class="dc-order__endpoint-label" />
+                    <ui:Label name="endpoint-from-port" text="-" class="dc-order__endpoint-port" />
+                    <ui:Label name="endpoint-type" text="RJ45" class="dc-chip" />
+                </ui:VisualElement>
+                <ui:VisualElement name="endpoint-to" class="dc-order__endpoint">
+                    <ui:VisualElement name="endpoint-to-dot" class="dc-dot" />
+                    <ui:Label text="TO" class="dc-order__endpoint-label" />
+                    <ui:Label name="endpoint-to-port" text="-" class="dc-order__endpoint-port" />
+                </ui:VisualElement>
+                <ui:VisualElement class="dc-order__stats">
+                    <ui:VisualElement class="dc-order__stat">
+                        <ui:Label text="ELAPSED" class="dc-label-muted" />
+                        <ui:Label name="order-elapsed" text="0:00" class="dc-order__stat-value" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="dc-order__stat">
+                        <ui:Label text="ERRORS" class="dc-label-muted" />
+                        <ui:Label name="order-errors" text="0" class="dc-order__stat-value" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="dc-order__stat">
+                        <ui:Label text="GRIPPER" class="dc-label-muted" />
+                        <ui:Label name="gripper-state" text="OPEN" class="dc-order__stat-value" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
+                <ui:VisualElement class="dc-progress-row">
+                    <ui:VisualElement class="dc-bar">
+                        <ui:VisualElement name="section-progress" class="dc-bar__fill dc-bar__fill--ok" />
+                    </ui:VisualElement>
+                    <ui:Label name="section-progress-label" text="0 / 0" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+            <ui:VisualElement class="dc-panel">
+                <ui:VisualElement class="dc-panel__header">
+                    <ui:Label text="QUEUE" class="dc-panel__title" />
+                </ui:VisualElement>
+                <ui:VisualElement name="order-list" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Bottom left: controls -->
+        <ui:VisualElement name="help" class="dc-panel dc-help">
+            <ui:VisualElement class="dc-panel__header">
+                <ui:Label text="CONTROLS" class="dc-panel__title" />
+                <ui:Button name="help-toggle" text="HIDE" class="dc-button" />
+            </ui:VisualElement>
+            <ui:VisualElement name="help-body" class="dc-help__body" />
+        </ui:VisualElement>
+
+        <!-- Bottom centre: deadman state -->
+        <ui:VisualElement name="deadman" class="dc-deadman" picking-mode="Ignore">
+            <ui:Label name="deadman-key" text="SPACE" class="dc-deadman__key" />
+            <ui:Label name="deadman-text" text="HOLD TO ENABLE MOTION" class="dc-deadman__text" />
+        </ui:VisualElement>
+
+        <!-- Bottom right: E-Stop -->
+        <ui:VisualElement name="estop" class="dc-estop">
+            <ui:Button name="estop-button" text="E-STOP" class="dc-estop__button" />
+            <ui:Button name="estop-reset" text="RESET  (SHIFT+BKSP)" class="dc-button dc-estop__reset" />
+        </ui:VisualElement>
+
+        <ui:VisualElement name="toasts" class="dc-toasts" picking-mode="Ignore" />
+    </ui:VisualElement>
+</ui:UXML>

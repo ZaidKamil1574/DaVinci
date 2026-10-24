@@ -1,0 +1,55 @@
+/*
+ * Design tokens for the operator HUD. Every colour, size and gap in Hud.uss comes from here,
+ * so the whole interface can be re-themed by editing this file alone.
+ * Status colours match the port LEDs and robot state chips in the world.
+ */
+:root {
+    /* Surfaces */
+    --dc-bg: rgba(8, 12, 18, 0.0);
+    --dc-surface: rgba(14, 19, 27, 0.90);
+    --dc-surface-raised: rgba(24, 31, 42, 0.95);
+    --dc-surface-sunken: rgba(6, 9, 14, 0.85);
+    --dc-border: rgba(130, 150, 172, 0.22);
+    --dc-border-strong: rgba(130, 150, 172, 0.45);
+
+    /* Text */
+    --dc-text: rgb(230, 237, 243);
+    --dc-text-muted: rgb(139, 152, 165);
+    --dc-text-faint: rgb(92, 104, 117);
+
+    /* Brand and status */
+    --dc-accent: rgb(25, 211, 255);
+    --dc-accent-dim: rgba(25, 211, 255, 0.16);
+    --dc-ok: rgb(46, 230, 107);
+    --dc-ok-dim: rgba(46, 230, 107, 0.16);
+    --dc-warn: rgb(255, 176, 32);
+    --dc-warn-dim: rgba(255, 176, 32, 0.16);
+    --dc-danger: rgb(255, 69, 58);
+    --dc-danger-dim: rgba(255, 69, 58, 0.18);
+    --dc-estop: rgb(214, 28, 24);
+    --dc-estop-ring: rgb(255, 214, 10);
+
+    /* Spacing scale */
+    --dc-space-1: 4px;
+    --dc-space-2: 8px;
+    --dc-space-3: 12px;
+    --dc-space-4: 16px;
+    --dc-space-5: 24px;
+
+    /* Radii */
+    --dc-radius-1: 4px;
+    --dc-radius-2: 8px;
+    --dc-radius-pill: 999px;
+
+    /* Type scale */
+    --dc-font-xs: 11px;
+    --dc-font-sm: 13px;
+    --dc-font-md: 15px;
+    --dc-font-lg: 18px;
+    --dc-font-xl: 24px;
+
+    /* Layout */
+    --dc-topbar-height: 44px;
+    --dc-column-left: 280px;
+    --dc-column-right: 340px;
+}

@@ -1,0 +1,15 @@
+{
+    "name": "DataCenter.Teleop",
+    "rootNamespace": "DataCenter.Teleop",
+    "references": [
+        "DataCenter.Core",
+        "DataCenter.Robotics",
+        "DataCenter.Tasks",
+        "Unity.InputSystem",
+        "Unity.XR.Interaction.Toolkit",
+        "Unity.XR.CoreUtils",
+        "Unity.XR.Management"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

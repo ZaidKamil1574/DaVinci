@@ -1,0 +1,7 @@
+{
+    "name": "DataCenter.Core",
+    "rootNamespace": "DataCenter",
+    "references": [],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

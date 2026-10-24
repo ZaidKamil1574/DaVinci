@@ -1,0 +1,14 @@
+{
+    "name": "DataCenter.UI",
+    "rootNamespace": "DataCenter.UI",
+    "references": [
+        "DataCenter.Core",
+        "DataCenter.Robotics",
+        "DataCenter.Tasks",
+        "DataCenter.Teleop",
+        "Unity.TextMeshPro",
+        "Unity.XR.Interaction.Toolkit"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}

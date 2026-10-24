@@ -1,0 +1,24 @@
+{
+    "name": "DataCenter.Editor",
+    "rootNamespace": "DataCenter.Editor",
+    "references": [
+        "DataCenter.Core",
+        "DataCenter.Robotics",
+        "DataCenter.Tasks",
+        "DataCenter.Teleop",
+        "DataCenter.UI",
+        "Unity.AI.Navigation",
+        "Unity.AI.Navigation.Editor",
+        "Unity.XR.Interaction.Toolkit",
+        "Unity.XR.CoreUtils",
+        "Unity.TextMeshPro",
+        "Unity.InputSystem",
+        "Unity.XR.Management",
+        "Unity.XR.Management.Editor"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "autoReferenced": false,
+    "noEngineReferences": false
+}

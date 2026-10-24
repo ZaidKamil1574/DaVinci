@@ -1,0 +1,10 @@
+{
+    "name": "DataCenter.Tasks",
+    "rootNamespace": "DataCenter.Tasks",
+    "references": [
+        "DataCenter.Core",
+        "DataCenter.Robotics"
+    ],
+    "autoReferenced": true,
+    "noEngineReferences": false
+}
