@@ -26,6 +26,18 @@ namespace DataCenter.UI
         [SerializeField, Tooltip("Root shown only while a headset is rendering.")]
         GameObject m_Visual;
 
+        [SerializeField]
+        ProximityIndicator m_Proximity;
+
+        [SerializeField]
+        TutorialController m_Tutorial;
+
+        [SerializeField]
+        WristCameraFeed m_WristCamera;
+
+        [SerializeField, Tooltip("Quad showing the wrist camera feed.")]
+        Renderer m_WristQuad;
+
         [SerializeField, Tooltip("Distance in front of the head, in metres.")]
         float m_Distance = 1.1f;
 
@@ -46,6 +58,13 @@ namespace DataCenter.UI
         bool m_Following;
         bool m_Placed;
         float m_NextRefresh;
+
+        void Start()
+        {
+            // The feed's texture is created at runtime, so it is attached here rather than in the scene.
+            if (m_WristQuad != null && m_WristCamera != null && m_WristCamera.texture != null)
+                m_WristQuad.material.SetTexture("_BaseMap", m_WristCamera.texture);
+        }
 
         void LateUpdate()
         {
@@ -136,6 +155,24 @@ namespace DataCenter.UI
             else
                 m_Builder.Append("<color=#8B98A5>Squeeze grip to enable motion</color>\n");
 
+            var sensor = m_Proximity != null ? m_Proximity.sensor : null;
+            if (sensor != null && !float.IsInfinity(sensor.toolDistance))
+            {
+                var color = sensor.zone == ProximityZone.Danger ? "#FF453A" : sensor.zone == ProximityZone.Warning ? "#FFB020" : "#2EE66B";
+                m_Builder.Append("<color=").Append(color).Append(">PROXIMITY ").Append((sensor.toolDistance * 100f).ToString("0.0")).Append(" cm</color>");
+                if (sensor.speedScale < 0.99f)
+                    m_Builder.Append("  <color=#8B98A5>speed ").Append(Mathf.RoundToInt(sensor.speedScale * 100f)).Append("%</color>");
+                m_Builder.Append('\n');
+            }
+
+            if (m_Tutorial != null && (m_Tutorial.isRunning || m_Tutorial.step == TutorialController.Step.Done))
+            {
+                m_Builder.Append("\n<color=#2EE66B><b>TUTORIAL ").Append(m_Tutorial.stepNumber).Append('/').Append(TutorialController.stepCount)
+                    .Append("</b></color>  <size=80%>").Append(m_Tutorial.instruction).Append("</size>");
+                m_Text.SetText(m_Builder);
+                return;
+            }
+
             var active = m_WorkOrders != null ? m_WorkOrders.GetActive(robot.sectionId) : null;
             if (active != null)
             {
@@ -165,8 +202,13 @@ namespace DataCenter.UI
         }
 
         /// <summary>Wires the panel from code. Used by the scene builder.</summary>
-        public void Configure(TeleopOperator teleopOperator, WorkOrderManager workOrders, TextMeshPro text, GameObject visual)
+        public void Configure(TeleopOperator teleopOperator, WorkOrderManager workOrders, TextMeshPro text, GameObject visual,
+            ProximityIndicator proximity, TutorialController tutorial, WristCameraFeed wristCamera, Renderer wristQuad)
         {
+            m_Proximity = proximity;
+            m_Tutorial = tutorial;
+            m_WristCamera = wristCamera;
+            m_WristQuad = wristQuad;
             m_Operator = teleopOperator;
             m_WorkOrders = workOrders;
             m_Text = text;

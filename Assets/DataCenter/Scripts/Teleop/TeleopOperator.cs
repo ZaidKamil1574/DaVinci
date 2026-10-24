@@ -252,6 +252,9 @@ namespace DataCenter.Teleop
                 frame = m_Robot.arm != null ? m_Robot.arm.baseFrame : m_Robot.transform;
             }
 
+            if (m_Intent.toggleMode)
+                SetMode(m_Mode == ControlMode.Direct ? ControlMode.Console : ControlMode.Direct);
+
             if (m_Intent.eStop)
                 EmergencyStop();
 

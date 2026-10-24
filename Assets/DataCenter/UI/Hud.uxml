@@ -28,6 +28,8 @@
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement class="dc-topbar__group">
+                <ui:Button name="tutorial-button" text="TUTORIAL" class="dc-button" />
+                <ui:Button name="link-button" text="LINK" class="dc-button" />
                 <ui:Button name="mode-direct" text="DIRECT" class="dc-button dc-button--active" />
                 <ui:Button name="mode-console" text="CONSOLE" class="dc-button" />
                 <ui:Label name="input-source" text="Keyboard + Mouse" class="dc-label-muted" />
@@ -43,6 +45,60 @@
                 </ui:VisualElement>
                 <ui:VisualElement name="robot-list" />
             </ui:VisualElement>
+            <ui:VisualElement class="dc-panel dc-wristcam">
+                <ui:VisualElement class="dc-panel__header">
+                    <ui:Label text="WRIST CAM" class="dc-panel__title" />
+                    <ui:Label name="wristcam-rate" text="-- fps" class="dc-label-muted" />
+                </ui:VisualElement>
+                <ui:VisualElement name="wristcam-view" class="dc-wristcam__view">
+                    <ui:Label name="wristcam-overlay" text="" class="dc-wristcam__overlay" picking-mode="Ignore" />
+                </ui:VisualElement>
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Link panel: network impairments, opened from the top bar -->
+        <ui:VisualElement name="link-panel" class="dc-panel dc-link-panel dc-hidden">
+            <ui:VisualElement class="dc-panel__header">
+                <ui:Label text="SIMULATED LINK" class="dc-panel__title" />
+                <ui:Label name="link-inflight" text="0 in flight" class="dc-label-muted" />
+            </ui:VisualElement>
+            <ui:VisualElement name="link-presets" class="dc-link-presets" />
+            <ui:Slider name="link-latency-slider" label="Latency (ms)" low-value="0" high-value="1000" show-input-field="true" class="dc-slider" />
+            <ui:Slider name="link-jitter-slider" label="Jitter (ms)" low-value="0" high-value="300" show-input-field="true" class="dc-slider" />
+            <ui:Slider name="link-loss-slider" label="Packet loss (%)" low-value="0" high-value="50" show-input-field="true" class="dc-slider" />
+            <ui:Label name="link-detail" text="" class="dc-label-muted dc-link-detail" />
+        </ui:VisualElement>
+
+        <!-- Tutorial card -->
+        <ui:VisualElement name="tutorial" class="dc-panel dc-tutorial dc-hidden">
+            <ui:VisualElement class="dc-panel__header">
+                <ui:Label name="tutorial-step" text="STEP 1 / 6" class="dc-panel__title" />
+                <ui:Label name="tutorial-time" text="0s" class="dc-label-muted" />
+            </ui:VisualElement>
+            <ui:Label name="tutorial-text" text="" class="dc-tutorial__text" />
+            <ui:VisualElement class="dc-tutorial__footer">
+                <ui:VisualElement name="tutorial-dots" class="dc-tutorial__dots" />
+                <ui:Button name="tutorial-skip" text="SKIP" class="dc-button" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Console mode on the desktop: on-screen sticks -->
+        <ui:VisualElement name="console" class="dc-panel dc-console dc-hidden">
+            <ui:VisualElement class="dc-panel__header">
+                <ui:Label text="CONSOLE" class="dc-panel__title" />
+                <ui:Label text="Hold SPACE while using" class="dc-label-muted" />
+            </ui:VisualElement>
+            <ui:VisualElement name="console-sticks" class="dc-console__sticks" />
+        </ui:VisualElement>
+
+        <!-- Proximity readout, above the deadman banner -->
+        <ui:VisualElement name="proximity" class="dc-proximity" picking-mode="Ignore">
+            <ui:VisualElement name="proximity-dot" class="dc-dot dc-dot--ok" />
+            <ui:Label text="PROXIMITY" class="dc-stat__label" />
+            <ui:Label name="proximity-value" text="clear" class="dc-stat__value" />
+            <ui:Label name="proximity-cap" text="" class="dc-label-muted" />
+            <ui:Label text="CMD GAP" class="dc-stat__label dc-proximity__gap" />
+            <ui:Label name="command-gap" text="0 mm" class="dc-stat__value" />
         </ui:VisualElement>
 
         <!-- Right: work orders -->

@@ -15,7 +15,7 @@ namespace DataCenter.Teleop
     /// <item><b>G</b>: toggle gripper. <b>H</b>: home the arm.</item>
     /// <item><b>W A S D</b>: drive the base. <b>Right-click</b> the floor: navigate there.</item>
     /// <item><b>Backspace</b>: E-Stop. <b>Shift + Backspace</b>: reset.</item>
-    /// <item><b>1</b>-<b>4</b>: take control of another robot.</item>
+    /// <item><b>1</b>-<b>4</b>: take control of another robot. <b>Tab</b>: Direct / Console mode.</item>
     /// </list>
     /// </remarks>
     public class DesktopTeleopInput : MonoBehaviour, ITeleopInput
@@ -102,6 +102,9 @@ namespace DataCenter.Teleop
             if (keyboard.digit2Key.wasPressedThisFrame) intent.selectRobot = 2;
             if (keyboard.digit3Key.wasPressedThisFrame) intent.selectRobot = 3;
             if (keyboard.digit4Key.wasPressedThisFrame) intent.selectRobot = 4;
+
+            if (keyboard.tabKey.wasPressedThisFrame)
+                intent.toggleMode = true;
 
             if (keyboard.backspaceKey.wasPressedThisFrame)
             {

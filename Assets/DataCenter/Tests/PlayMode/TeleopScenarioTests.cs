@@ -156,6 +156,40 @@ namespace DataCenter.Tests
         }
 
         [UnityTest]
+        public IEnumerator ProximityCapsSpeedNearTheRack()
+        {
+            var sensor = m_Robot.GetComponent<ProximitySensor>();
+            Assert.That(sensor, Is.Not.Null, "Robot has no proximity sensor");
+            Assert.That(sensor.zone, Is.EqualTo(ProximityZone.Clear), "Ready pose should be clear of equipment");
+            Assert.That(sensor.speedScale, Is.EqualTo(1f).Within(0.01f));
+
+            // Reach right up to the patch panel face.
+            var port = PortSocket.Find(FromPort);
+            var into = Quaternion.LookRotation(port.socket.forward, Vector3.up);
+            yield return MoveTool(port.socket.position - port.socket.forward * 0.05f, into, 0.006f);
+
+            Assert.That(sensor.zone, Is.Not.EqualTo(ProximityZone.Clear), $"No warning {sensor.toolDistance * 100f:0.0} cm from the rack");
+            Assert.That(sensor.speedScale, Is.LessThan(1f), "Speed was not capped near equipment");
+            Assert.That(m_Robot.speedScale, Is.LessThan(1f), "Robot did not apply the cap");
+        }
+
+        [UnityTest]
+        public IEnumerator TutorialStartsInStagingAndAdvancesOnDeadman()
+        {
+            var tutorial = UnityEngine.Object.FindAnyObjectByType<TutorialController>();
+            Assert.That(tutorial, Is.Not.Null);
+
+            tutorial.Begin();
+            yield return null;
+            Assert.That(m_Operator.robot.sectionId, Is.EqualTo("D"), "Tutorial did not take the Staging robot");
+            Assert.That(tutorial.step, Is.EqualTo(TutorialController.Step.Deadman));
+
+            m_Input.next.deadman = true;
+            yield return new WaitForSeconds(1.3f);
+            Assert.That(tutorial.step, Is.EqualTo(TutorialController.Step.Grab), "Holding the deadman did not pass step 1");
+        }
+
+        [UnityTest]
         public IEnumerator HomesToReadyPose()
         {
             var expected = m_Robot.arm.baseFrame.TransformPoint(m_Robot.readyPosition);

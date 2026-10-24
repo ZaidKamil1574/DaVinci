@@ -125,6 +125,7 @@ namespace DataCenter.Editor
             wristCamera.farClipPlane = 8f;
             wristCamera.enabled = false;
             wristCamera.tag = "Untagged";
+            wristCamera.stereoTargetEye = StereoTargetEyeMask.None;
 
             // ---------- Components
             var agent = root.AddComponent<NavMeshAgent>();
@@ -166,6 +167,10 @@ namespace DataCenter.Editor
 
             var robot = root.AddComponent<TeleopRobot>();
             robot.Configure("R-A1", "Atlas", "A", spec, null, arm, mobileBase, gripper, wristCamera);
+
+            // Speed cap and proximity warnings near equipment.
+            var sensor = root.AddComponent<ProximitySensor>();
+            sensor.Configure(BuilderAssets.Mask(BuilderAssets.EquipmentLayer));
 
             SetLayerRecursively(root, BuilderAssets.Layer(BuilderAssets.RobotLayer));
 

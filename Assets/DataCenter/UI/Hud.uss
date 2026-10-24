@@ -472,6 +472,174 @@
     display: none;
 }
 
+/* ---------- Utility ---------- */
+
+.dc-hidden {
+    display: none;
+}
+
+/* ---------- Wrist camera ---------- */
+
+.dc-wristcam__view {
+    height: 160px;
+    border-radius: var(--dc-radius-1);
+    background-color: var(--dc-surface-sunken);
+    -unity-background-scale-mode: scale-and-crop;
+    justify-content: flex-end;
+}
+
+.dc-wristcam__overlay {
+    font-size: var(--dc-font-xs);
+    color: var(--dc-text);
+    background-color: rgba(0, 0, 0, 0.45);
+    padding: 2px var(--dc-space-2);
+    align-self: flex-start;
+    border-radius: var(--dc-radius-1);
+    margin: var(--dc-space-1);
+}
+
+/* ---------- Link panel ---------- */
+
+.dc-link-panel {
+    position: absolute;
+    top: 52px;
+    right: 360px;
+    width: 380px;
+}
+
+.dc-link-presets {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: var(--dc-space-2);
+}
+
+.dc-link-presets > Button {
+    margin: 0 var(--dc-space-1) var(--dc-space-1) 0;
+}
+
+.dc-slider {
+    margin: var(--dc-space-1) 0;
+}
+
+.dc-slider Label {
+    color: var(--dc-text-muted);
+    font-size: var(--dc-font-xs);
+    min-width: 110px;
+}
+
+.dc-slider .unity-base-field__input {
+    background-color: var(--dc-surface-sunken);
+    color: var(--dc-text);
+    border-color: var(--dc-border);
+}
+
+.dc-link-detail {
+    margin-top: var(--dc-space-2);
+    white-space: normal;
+}
+
+/* ---------- Tutorial ---------- */
+
+.dc-tutorial {
+    position: absolute;
+    top: 56px;
+    left: 50%;
+    translate: -50% 0;
+    width: 520px;
+    border-color: var(--dc-ok);
+}
+
+.dc-tutorial__text {
+    font-size: var(--dc-font-md);
+    white-space: normal;
+    margin-bottom: var(--dc-space-2);
+}
+
+.dc-tutorial__footer {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.dc-tutorial__dots {
+    flex-direction: row;
+}
+
+.dc-toasts--below-tutorial {
+    top: 200px;
+}
+
+/* ---------- Console sticks ---------- */
+
+.dc-console {
+    position: absolute;
+    bottom: 110px;
+    left: 50%;
+    translate: -50% 0;
+}
+
+.dc-console__sticks {
+    flex-direction: row;
+    padding-bottom: var(--dc-space-4);
+}
+
+.dc-stick {
+    width: 110px;
+    height: 110px;
+    border-radius: 55px;
+    margin: 0 var(--dc-space-2);
+    background-color: var(--dc-surface-sunken);
+    border-width: 1px;
+    border-color: var(--dc-border-strong);
+    align-items: center;
+    justify-content: center;
+}
+
+.dc-stick__knob {
+    width: 40px;
+    height: 40px;
+    border-radius: 20px;
+    background-color: var(--dc-accent);
+}
+
+.dc-stick__label {
+    position: absolute;
+    bottom: -18px;
+    font-size: var(--dc-font-xs);
+    color: var(--dc-text-muted);
+}
+
+/* ---------- Proximity ---------- */
+
+.dc-proximity {
+    position: absolute;
+    bottom: 68px;
+    left: 50%;
+    translate: -50% 0;
+    flex-direction: row;
+    align-items: center;
+    padding: var(--dc-space-1) var(--dc-space-3);
+    border-radius: var(--dc-radius-pill);
+    background-color: var(--dc-surface);
+    border-width: 1px;
+    border-color: var(--dc-border);
+}
+
+.dc-proximity__gap {
+    margin-left: var(--dc-space-3);
+}
+
+.dc-proximity--warn {
+    border-color: var(--dc-warn);
+}
+
+.dc-proximity--danger {
+    border-color: var(--dc-danger);
+    background-color: var(--dc-danger-dim);
+}
+
+.dc-dot--danger { background-color: var(--dc-danger); }
+
 /* ---------- Toasts ---------- */
 
 .dc-toasts {

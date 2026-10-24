@@ -61,6 +61,9 @@ namespace DataCenter.Teleop
 
         /// <summary>Take control of robot number N (1-based, in fleet order) this frame. 0 for none.</summary>
         public int selectRobot;
+
+        /// <summary>Switch between Direct and Console control this frame.</summary>
+        public bool toggleMode;
     }
 
     /// <summary>What an input source may need to know to interpret raw input.</summary>

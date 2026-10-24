@@ -548,8 +548,12 @@ namespace DataCenter.Editor
             foreach (var renderer in renderers)
                 bounds.Encapsulate(renderer.bounds);
 
-            // Far LOD: one box per rack and chassis. Cables, keyboard and screens simply disappear.
-            var proxyRoot = Child("LOD1 Proxy", bay, Vector3.zero);
+            // Middle LOD: the same model without its two cable meshes (58k of the 134k triangles),
+            // which are fine detail that cannot be read from a few metres away anyway.
+            var withoutCables = System.Array.FindAll(renderers, r => !r.name.ToUpperInvariant().StartsWith("CABLE"));
+
+            // Far LOD: one box per rack and chassis. Keyboard and screens simply disappear.
+            var proxyRoot = Child("LOD2 Proxy", bay, Vector3.zero);
             var proxies = new List<Renderer>();
             foreach (var renderer in renderers)
             {
@@ -565,9 +569,10 @@ namespace DataCenter.Editor
             var group = bay.gameObject.AddComponent<LODGroup>();
             group.SetLODs(new[]
             {
-                // The bay is 5 m across, so even 0.7 of screen height is only reached within about
-                // 7 m. Beyond that the 134k-triangle model drops to its proxies.
+                // The bay is 5 m across: full detail within about 7 m, racks without cabling out to
+                // about 25 m, boxes beyond.
                 new LOD(0.7f, renderers),
+                new LOD(0.2f, withoutCables),
                 new LOD(0.01f, proxies.ToArray()),
             });
             group.RecalculateBounds();

@@ -34,6 +34,24 @@ namespace DataCenter.UI
         [SerializeField, Tooltip("Floor plan drawn by the minimap.")]
         FacilityMap m_Map;
 
+        [SerializeField]
+        WristCameraFeed m_WristCamera;
+
+        [SerializeField]
+        ProximityIndicator m_Proximity;
+
+        [SerializeField]
+        CommandGhost m_Ghost;
+
+        [SerializeField]
+        TutorialController m_Tutorial;
+
+        [SerializeField, Tooltip("Console tool speed at full stick, in metres per second.")]
+        float m_ConsoleToolSpeed = 0.2f;
+
+        [SerializeField, Tooltip("Console wrist rate at full stick, in degrees per second.")]
+        float m_ConsoleWristRate = 70f;
+
         [SerializeField, Tooltip("Text refreshes per second.")]
         float m_RefreshRate = 10f;
 
@@ -53,6 +71,11 @@ namespace DataCenter.UI
         Label m_DeadmanText, m_DeadmanKey;
         Button m_ModeDirect, m_ModeConsole, m_EStopButton;
         MinimapElement m_Minimap;
+        VisualElement m_LinkPanel, m_TutorialCard, m_TutorialDots, m_Console, m_ProximityPill, m_ProximityDot, m_WristView;
+        Label m_TutorialStep, m_TutorialTime, m_TutorialText, m_ProximityValue, m_ProximityCap, m_CommandGap, m_LinkInFlight, m_LinkDetail, m_WristRate, m_WristOverlay;
+        Slider m_LatencySlider, m_JitterSlider, m_LossSlider;
+        VirtualStick m_DriveStick, m_ToolStick, m_WristStick;
+        bool m_ConsoleWasActive;
 
         readonly Dictionary<TeleopRobot, RobotCard> m_Cards = new Dictionary<TeleopRobot, RobotCard>();
         readonly Queue<VisualElement> m_ToastQueue = new Queue<VisualElement>();
@@ -95,6 +118,10 @@ namespace DataCenter.UI
 
             UIPointerGate.isOverUI = IsOverUI;
             BuildMinimap();
+            BuildLinkPanel();
+            BuildTutorial();
+            BuildConsole();
+            BuildWristCam();
             RebuildRobotList();
         }
 
@@ -112,6 +139,9 @@ namespace DataCenter.UI
 
             if (UIPointerGate.isOverUI == IsOverUI)
                 UIPointerGate.isOverUI = null;
+
+            if (m_Tutorial != null)
+                m_Tutorial.stepChanged -= OnTutorialStep;
         }
 
         void Query()
@@ -165,6 +195,226 @@ namespace DataCenter.UI
             m_Minimap.floorClicked += OnMinimapFloorClicked;
         }
 
+        // ---------------------------------------------------------------- Link panel
+
+        void BuildLinkPanel()
+        {
+            m_LinkPanel = m_Root.Q("link-panel");
+            m_LinkInFlight = m_Root.Q<Label>("link-inflight");
+            m_LinkDetail = m_Root.Q<Label>("link-detail");
+            m_LatencySlider = m_Root.Q<Slider>("link-latency-slider");
+            m_JitterSlider = m_Root.Q<Slider>("link-jitter-slider");
+            m_LossSlider = m_Root.Q<Slider>("link-loss-slider");
+
+            var linkButton = m_Root.Q<Button>("link-button");
+            linkButton.clicked += () =>
+            {
+                m_LinkPanel.ToggleInClassList("dc-hidden");
+                linkButton.EnableInClassList("dc-button--active", !m_LinkPanel.ClassListContains("dc-hidden"));
+            };
+
+            var presets = m_Root.Q("link-presets");
+            presets.Clear();
+            foreach (var preset in LinkPresets.all)
+            {
+                var p = preset;
+                var button = new Button(() => ApplyPreset(p)) { text = p.name.ToUpperInvariant() };
+                button.AddToClassList("dc-button");
+                presets.Add(button);
+            }
+
+            var conditions = m_Operator != null && m_Operator.link != null ? m_Operator.link.conditions : null;
+            if (conditions == null)
+                return;
+
+            m_LatencySlider.SetValueWithoutNotify(conditions.latencyMs);
+            m_JitterSlider.SetValueWithoutNotify(conditions.jitterMs);
+            m_LossSlider.SetValueWithoutNotify(conditions.packetLossPercent);
+            m_LatencySlider.RegisterValueChangedCallback(e => conditions.latencyMs = e.newValue);
+            m_JitterSlider.RegisterValueChangedCallback(e => conditions.jitterMs = e.newValue);
+            m_LossSlider.RegisterValueChangedCallback(e => conditions.packetLossPercent = e.newValue);
+        }
+
+        void ApplyPreset(LinkPresets.Preset preset)
+        {
+            if (m_Operator == null || m_Operator.link == null)
+                return;
+
+            LinkPresets.Apply(m_Operator.link.conditions, preset);
+            m_LatencySlider.SetValueWithoutNotify(preset.latencyMs);
+            m_JitterSlider.SetValueWithoutNotify(preset.jitterMs);
+            m_LossSlider.SetValueWithoutNotify(preset.lossPercent);
+            ToastEvent.Show($"Link: {preset.name} ({preset.latencyMs:0} ms, ±{preset.jitterMs:0} ms, {preset.lossPercent:0.#}% loss)");
+        }
+
+        void UpdateLinkDetail()
+        {
+            if (m_LinkPanel == null || m_LinkPanel.ClassListContains("dc-hidden") || m_Operator == null || m_Operator.link == null)
+                return;
+
+            // Keep sliders honest when the VR wrist menu changes the preset.
+            var conditions = m_Operator.link.conditions;
+            m_LatencySlider.SetValueWithoutNotify(conditions.latencyMs);
+            m_JitterSlider.SetValueWithoutNotify(conditions.jitterMs);
+            m_LossSlider.SetValueWithoutNotify(conditions.packetLossPercent);
+
+            var stats = m_Operator.link.transport.stats;
+            if (m_Operator.link.transport is LocalLoopbackTransport loopback)
+                m_LinkInFlight.text = $"{loopback.inFlight} in flight";
+
+            var watchdog = m_Operator.robot != null ? m_Operator.robot.spec.watchdogTimeout * 1000f : 300f;
+            m_LinkDetail.text = $"Sent {stats.sent:N0}  ·  delivered {stats.delivered:N0}  ·  dropped {stats.dropped:N0}\n" +
+                                "Commands are state, not events: each update repeats the full target, so loss costs smoothness, not correctness. " +
+                                $"The robot stops by itself if nothing arrives for {watchdog:0} ms while it is cleared to move.";
+        }
+
+        // ---------------------------------------------------------------- Tutorial
+
+        void BuildTutorial()
+        {
+            m_TutorialCard = m_Root.Q("tutorial");
+            m_TutorialStep = m_Root.Q<Label>("tutorial-step");
+            m_TutorialTime = m_Root.Q<Label>("tutorial-time");
+            m_TutorialText = m_Root.Q<Label>("tutorial-text");
+            m_TutorialDots = m_Root.Q("tutorial-dots");
+            m_Root.Q<Button>("tutorial-skip").clicked += () => m_Tutorial?.Skip();
+            m_Root.Q<Button>("tutorial-button").clicked += () =>
+            {
+                if (m_Tutorial == null)
+                    return;
+                if (m_Tutorial.isRunning)
+                    m_Tutorial.Skip();
+                else
+                    m_Tutorial.Begin();
+            };
+
+            m_TutorialDots.Clear();
+            for (var i = 0; i < TutorialController.stepCount; i++)
+            {
+                var dot = new VisualElement();
+                dot.AddToClassList("dc-dot");
+                m_TutorialDots.Add(dot);
+            }
+
+            if (m_Tutorial != null)
+                m_Tutorial.stepChanged += OnTutorialStep;
+        }
+
+        void OnTutorialStep(TutorialController.Step step)
+        {
+            var visible = step != TutorialController.Step.NotStarted;
+            m_TutorialCard.EnableInClassList("dc-hidden", !visible);
+            m_Toasts.EnableInClassList("dc-toasts--below-tutorial", visible);
+            m_Root.Q<Button>("tutorial-button").text = m_Tutorial.isRunning ? "SKIP TUTORIAL" : "TUTORIAL";
+            if (!visible)
+                return;
+
+            m_TutorialText.text = m_Tutorial.instruction;
+            var done = step == TutorialController.Step.Done;
+            m_TutorialStep.text = done ? "TUTORIAL COMPLETE" : $"STEP {m_Tutorial.stepNumber} / {TutorialController.stepCount}";
+            for (var i = 0; i < m_TutorialDots.childCount; i++)
+            {
+                var dot = m_TutorialDots[i];
+                dot.EnableInClassList("dc-dot--ok", done || i < m_Tutorial.stepNumber - 1);
+                dot.EnableInClassList("dc-dot--accent", !done && i == m_Tutorial.stepNumber - 1);
+            }
+
+            if (done)
+            {
+                m_TutorialCard.schedule.Execute(() =>
+                {
+                    m_TutorialCard.AddToClassList("dc-hidden");
+                    m_Toasts.RemoveFromClassList("dc-toasts--below-tutorial");
+                }).StartingIn(6000);
+            }
+        }
+
+        // ---------------------------------------------------------------- Console
+
+        void BuildConsole()
+        {
+            m_Console = m_Root.Q("console");
+            var sticks = m_Root.Q("console-sticks");
+            sticks.Clear();
+            m_DriveStick = new VirtualStick("BASE");
+            m_ToolStick = new VirtualStick("TOOL reach / height");
+            m_WristStick = new VirtualStick("WRIST ROLL");
+            sticks.Add(m_DriveStick);
+            sticks.Add(m_ToolStick);
+            sticks.Add(m_WristStick);
+        }
+
+        void UpdateConsole()
+        {
+            if (m_Operator == null || m_Console == null)
+                return;
+
+            var active = m_Operator.mode == ControlMode.Console && !XRPlatform.isImmersive;
+            m_Console.EnableInClassList("dc-hidden", !active);
+            if (!active)
+            {
+                if (m_ConsoleWasActive)
+                {
+                    m_Operator.consoleDrive = Vector2.zero;
+                    m_Operator.consoleArmVelocity = Vector3.zero;
+                    m_Operator.consoleWristRollRate = 0f;
+                    m_ConsoleWasActive = false;
+                }
+
+                return;
+            }
+
+            m_ConsoleWasActive = true;
+            m_Operator.consoleDrive = m_DriveStick.value;
+            var tool = m_ToolStick.value;
+            m_Operator.consoleArmVelocity = new Vector3(0f, tool.x, tool.y) * m_ConsoleToolSpeed;
+            m_Operator.consoleWristRollRate = -m_WristStick.value.x * m_ConsoleWristRate;
+        }
+
+        // ---------------------------------------------------------------- Wrist camera and proximity
+
+        void BuildWristCam()
+        {
+            m_WristView = m_Root.Q("wristcam-view");
+            m_WristRate = m_Root.Q<Label>("wristcam-rate");
+            m_WristOverlay = m_Root.Q<Label>("wristcam-overlay");
+            m_ProximityPill = m_Root.Q("proximity");
+            m_ProximityDot = m_Root.Q("proximity-dot");
+            m_ProximityValue = m_Root.Q<Label>("proximity-value");
+            m_ProximityCap = m_Root.Q<Label>("proximity-cap");
+            m_CommandGap = m_Root.Q<Label>("command-gap");
+
+            if (m_WristCamera != null && m_WristCamera.texture != null)
+            {
+                m_WristView.style.backgroundImage = new StyleBackground(Background.FromRenderTexture(m_WristCamera.texture));
+                m_WristRate.text = $"{m_WristCamera.texture.width}x{m_WristCamera.texture.height}  ·  {m_WristCamera.rate:0} fps";
+            }
+        }
+
+        void UpdateProximity()
+        {
+            if (m_Ghost != null)
+                m_CommandGap.text = $"{m_Ghost.positionGap * 1000f:0} mm";
+
+            var robot = m_Operator != null ? m_Operator.robot : null;
+            if (m_WristOverlay != null && robot != null)
+                m_WristOverlay.text = $"{robot.robotId}  ·  {(robot.gripper != null && robot.gripper.held != null ? "HOLDING" : "OPEN")}";
+
+            var sensor = m_Proximity != null ? m_Proximity.sensor : null;
+            if (sensor == null)
+                return;
+
+            var zone = sensor.zone;
+            var inRange = !float.IsInfinity(sensor.toolDistance);
+            m_ProximityValue.text = inRange ? $"{sensor.toolDistance * 100f:0.0} cm" : "clear";
+            m_ProximityCap.text = sensor.speedScale < 0.99f ? $"speed {sensor.speedScale * 100f:0}%" : string.Empty;
+            m_ProximityDot.EnableInClassList("dc-dot--ok", zone == ProximityZone.Clear);
+            m_ProximityDot.EnableInClassList("dc-dot--warn", zone == ProximityZone.Warning);
+            m_ProximityDot.EnableInClassList("dc-dot--danger", zone == ProximityZone.Danger);
+            m_ProximityPill.EnableInClassList("dc-proximity--warn", zone == ProximityZone.Warning);
+            m_ProximityPill.EnableInClassList("dc-proximity--danger", zone == ProximityZone.Danger);
+        }
+
         void OnMinimapFloorClicked(Vector3 world)
         {
             if (m_Operator == null || m_Operator.robot == null)
@@ -188,6 +438,7 @@ namespace DataCenter.UI
             AddHelp(body, "RIGHT-DRAG", "Orbit camera");
             AddHelp(body, "H", "Home arm");
             AddHelp(body, "1 - 4", "Switch robot");
+            AddHelp(body, "TAB", "Direct / console mode");
             AddHelp(body, "BACKSPACE", "E-Stop");
         }
 
@@ -340,8 +591,9 @@ namespace DataCenter.UI
             if (dt > 0f)
                 m_FpsSmoothed = Mathf.Lerp(m_FpsSmoothed, 1f / dt, 0.05f);
 
-            // The deadman banner and E-Stop must never lag, so they update every frame.
+            // The deadman banner, E-Stop and console sticks must never lag, so they update every frame.
             UpdateSafety();
+            UpdateConsole();
 
             if (Time.unscaledTime < m_NextRefresh)
                 return;
@@ -351,6 +603,13 @@ namespace DataCenter.UI
             UpdateRobots();
             UpdateOrders();
             m_Minimap?.Refresh(1f / Mathf.Max(1f, m_RefreshRate));
+            UpdateProximity();
+            UpdateLinkDetail();
+            if (m_Tutorial != null && m_Tutorial.isRunning)
+            {
+                m_TutorialTime.text = $"{m_Tutorial.elapsed:0}s";
+                m_TutorialText.text = m_Tutorial.instruction;
+            }
         }
 
         void UpdateSafety()
@@ -575,11 +834,16 @@ namespace DataCenter.UI
         }
 
         /// <summary>Wires the HUD from code. Used by the scene builder.</summary>
-        public void Configure(TeleopOperator teleopOperator, WorkOrderManager workOrders, FacilityMap map)
+        public void Configure(TeleopOperator teleopOperator, WorkOrderManager workOrders, FacilityMap map,
+            WristCameraFeed wristCamera, ProximityIndicator proximity, CommandGhost ghost, TutorialController tutorial)
         {
             m_Operator = teleopOperator;
             m_WorkOrders = workOrders;
             m_Map = map;
+            m_WristCamera = wristCamera;
+            m_Proximity = proximity;
+            m_Ghost = ghost;
+            m_Tutorial = tutorial;
         }
     }
 }
