@@ -1,0 +1,20 @@
+{
+    "name": "DaVinci.Editor",
+    "rootNamespace": "XRMultiplayer.DaVinci.Editor",
+    "references": [
+        "DaVinci.Runtime",
+        "Unity.XR.Interaction.Toolkit",
+        "Unity.Animation.Rigging"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

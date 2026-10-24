@@ -1,0 +1,18 @@
+{
+    "name": "DaVinci.Runtime",
+    "rootNamespace": "XRMultiplayer.DaVinci",
+    "references": [
+        "Unity.XR.Interaction.Toolkit",
+        "Unity.XR.CoreUtils",
+        "VRMP"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}
