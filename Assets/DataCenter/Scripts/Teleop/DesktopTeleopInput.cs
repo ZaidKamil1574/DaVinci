@@ -15,6 +15,7 @@ namespace DataCenter.Teleop
     /// <item><b>G</b>: toggle gripper. <b>H</b>: home the arm.</item>
     /// <item><b>W A S D</b>: drive the base. <b>Right-click</b> the floor: navigate there.</item>
     /// <item><b>Backspace</b>: E-Stop. <b>Shift + Backspace</b>: reset.</item>
+    /// <item><b>1</b>-<b>4</b>: take control of another robot.</item>
     /// </list>
     /// </remarks>
     public class DesktopTeleopInput : MonoBehaviour, ITeleopInput
@@ -95,6 +96,12 @@ namespace DataCenter.Teleop
 
             if (keyboard.hKey.wasPressedThisFrame)
                 intent.homeArm = true;
+
+            // 1-4 switch robots, matching the order of the fleet list.
+            if (keyboard.digit1Key.wasPressedThisFrame) intent.selectRobot = 1;
+            if (keyboard.digit2Key.wasPressedThisFrame) intent.selectRobot = 2;
+            if (keyboard.digit3Key.wasPressedThisFrame) intent.selectRobot = 3;
+            if (keyboard.digit4Key.wasPressedThisFrame) intent.selectRobot = 4;
 
             if (keyboard.backspaceKey.wasPressedThisFrame)
             {

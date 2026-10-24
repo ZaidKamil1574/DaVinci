@@ -58,6 +58,9 @@ namespace DataCenter.Teleop
 
         /// <summary>Snap the tool back to the robot's ready pose this frame.</summary>
         public bool homeArm;
+
+        /// <summary>Take control of robot number N (1-based, in fleet order) this frame. 0 for none.</summary>
+        public int selectRobot;
     }
 
     /// <summary>What an input source may need to know to interpret raw input.</summary>

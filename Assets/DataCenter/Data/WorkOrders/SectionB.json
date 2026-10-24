@@ -1,0 +1,14 @@
+{
+  "section": "B",
+  "title": "Network Core / MDF",
+  "orders": [
+    {
+      "id": "WO-B-001",
+      "summary": "Patch B-R03 fiber panel port 5 to core line card port 5 (LC duplex)",
+      "portType": "LC",
+      "from": "B-R03-U30-P05",
+      "to": "B-R03-U32-P05",
+      "cable": "B-F01"
+    }
+  ]
+}

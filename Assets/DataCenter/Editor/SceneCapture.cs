@@ -26,10 +26,13 @@ namespace DataCenter.Editor
         {
             new View { name = "01_operator", position = new Vector3(-12.2f, 2.05f, 5.15f), lookAt = new Vector3(-13.6f, 1.3f, 3.2f), fov = 55f },
             new View { name = "02_work_rack", position = new Vector3(-13.25f, 1.75f, 4.15f), lookAt = new Vector3(-13.5f, 1.75f, 3.15f), fov = 50f },
-            new View { name = "03_section_a", position = new Vector3(-6.5f, 3.6f, -0.5f), lookAt = new Vector3(-12f, 0.8f, 6.5f), fov = 60f },
-            new View { name = "04_showcase", position = new Vector3(-4.5f, 2.2f, 1.8f), lookAt = new Vector3(-4.5f, 0.9f, 6.5f), fov = 60f },
-            new View { name = "05_hall_overview", position = new Vector3(0f, 26f, -16f), lookAt = new Vector3(0f, 0f, 1f), fov = 60f },
+            new View { name = "03_section_a", position = new Vector3(-0.5f, 3.6f, -0.3f), lookAt = new Vector3(-9f, 0.8f, 6.5f), fov = 60f },
+            new View { name = "04_staging_bench", position = new Vector3(-11.0f, 2.2f, -3.2f), lookAt = new Vector3(-14.5f, 0.9f, -7.2f), fov = 60f },
+            new View { name = "05_hall_overview", position = new Vector3(0f, 30f, -18f), lookAt = new Vector3(0f, 0f, 0.5f), fov = 60f },
             new View { name = "06_robot_close", position = new Vector3(-14.6f, 1.6f, 5.2f), lookAt = new Vector3(-13.5f, 1.0f, 4.0f), fov = 50f },
+            new View { name = "07_section_b", position = new Vector3(11.5f, 2.6f, 4.3f), lookAt = new Vector3(6.5f, 1.0f, 4.0f), fov = 60f },
+            new View { name = "08_section_c", position = new Vector3(10.5f, 2.4f, -5.5f), lookAt = new Vector3(5.9f, 1.0f, -3.4f), fov = 60f },
+            new View { name = "09_section_d", position = new Vector3(-4.5f, 2.4f, -7.5f), lookAt = new Vector3(-8.5f, 0.8f, -4.6f), fov = 60f },
         };
 
         [MenuItem("Tools/Data Center/Capture Views", false, 101)]

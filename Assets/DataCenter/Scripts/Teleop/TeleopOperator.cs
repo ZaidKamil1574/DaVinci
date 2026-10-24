@@ -60,6 +60,8 @@ namespace DataCenter.Teleop
         TeleopIntent m_Intent;
         ControlMode m_Mode;
         string m_ActiveInputName = "None";
+        bool m_PendingNav;
+        Vector3 m_PendingNavGoal;
 
         /// <summary>Raised after the controlled robot changes.</summary>
         public event Action<TeleopRobot> robotSelected;
@@ -134,6 +136,18 @@ namespace DataCenter.Teleop
         {
             if (input != null && !m_Inputs.Contains(input))
                 m_Inputs.Add(input);
+        }
+
+        /// <summary>
+        /// Asks for the selected robot to drive to <paramref name="worldPoint"/>, for example from a
+        /// minimap click. Honoured on the next frame only if the deadman is held then.
+        /// </summary>
+        /// <returns>Whether the deadman is held now, so the caller can prompt if not.</returns>
+        public bool RequestNavigation(Vector3 worldPoint)
+        {
+            m_PendingNav = true;
+            m_PendingNavGoal = worldPoint;
+            return m_Intent.deadman;
         }
 
         /// <summary>Removes an input source added with <see cref="AddInputSource"/>.</summary>
@@ -221,6 +235,21 @@ namespace DataCenter.Teleop
 
                 m_Inputs[i].Poll(ref m_Intent, context);
                 m_ActiveInputName = m_Inputs[i].displayName;
+            }
+
+            if (m_PendingNav)
+            {
+                m_PendingNav = false;
+                m_Intent.hasNavGoal = true;
+                m_Intent.navGoal = m_PendingNavGoal;
+            }
+
+            if (m_Intent.selectRobot > 0 && m_Intent.selectRobot <= TeleopRobot.all.Count)
+            {
+                Select(TeleopRobot.all[m_Intent.selectRobot - 1]);
+                if (m_Robot == null)
+                    return;
+                frame = m_Robot.arm != null ? m_Robot.arm.baseFrame : m_Robot.transform;
             }
 
             if (m_Intent.eStop)

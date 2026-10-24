@@ -89,11 +89,10 @@ namespace DataCenter.Tasks
 
         void Start()
         {
-            foreach (var section in m_BySection.Keys)
-            {
+            // Every section starts with its first order live, so each robot reports a task. Port
+            // highlights only show for the section in focus.
+            foreach (var section in new List<string>(m_BySection.Keys))
                 ActivateNext(section);
-                break;
-            }
         }
 
         /// <summary>Orders for a section, in sequence. Empty if the section has none.</summary>

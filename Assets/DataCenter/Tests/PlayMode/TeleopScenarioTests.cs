@@ -133,6 +133,29 @@ namespace DataCenter.Tests
         }
 
         [UnityTest]
+        public IEnumerator SelectingAnotherRobotHandsOverControl()
+        {
+            Assert.That(TeleopRobot.all.Count, Is.EqualTo(4), "Expected one robot per section");
+            var first = m_Operator.robot;
+            var second = TeleopRobot.all[1];
+            m_Operator.Select(second);
+            yield return null;
+
+            Assert.That(m_Operator.robot, Is.EqualTo(second));
+            Assert.That(second.sectionId, Is.EqualTo("B"));
+            var orders = UnityEngine.Object.FindAnyObjectByType<WorkOrderManager>();
+            Assert.That(orders.focusedSection, Is.EqualTo("B"), "Port highlights did not follow the selected robot");
+
+            // The previous robot was told to hold, and drives nowhere while unselected.
+            m_Input.next.deadman = true;
+            m_Input.next.baseDrive = new Vector2(0f, 1f);
+            var before = first.transform.position;
+            yield return new WaitForSeconds(0.6f);
+            Assert.That(Vector3.Distance(first.transform.position, before), Is.LessThan(0.005f), "Unselected robot moved");
+            Assert.That(second.mobileBase.speed, Is.GreaterThan(0.05f), "Selected robot did not drive");
+        }
+
+        [UnityTest]
         public IEnumerator HomesToReadyPose()
         {
             var expected = m_Robot.arm.baseFrame.TransformPoint(m_Robot.readyPosition);
@@ -156,7 +179,7 @@ namespace DataCenter.Tests
         }
 
         [UnityTest]
-        public IEnumerator CompletesSectionAWorkOrderEndToEnd()
+        public IEnumerator CompletesFirstSectionAWorkOrderEndToEnd()
         {
             var from = PortSocket.Find(FromPort);
             var to = PortSocket.Find(ToPort);
@@ -193,8 +216,14 @@ namespace DataCenter.Tests
 
             yield return new WaitForSeconds(0.8f);
             Assert.That(from.linkUp && to.linkUp, Is.True, "Ports did not report link up");
-            Assert.That(orders.IsSectionComplete("A"), Is.True,
-                $"Section A was not marked complete: status {active.status}, ends {active.endsDone}, errors {active.errors}");
+            Assert.That(active.status, Is.EqualTo(OrderStatus.Complete),
+                $"WO-A-001 was not marked complete: status {active.status}, ends {active.endsDone}, errors {active.errors}");
+            Assert.That(active.errors, Is.EqualTo(0));
+
+            // The queue moves on to the next order in the section.
+            var next = orders.GetActive("A");
+            Assert.That(next, Is.Not.Null, "No follow-up order activated");
+            Assert.That(next.order.id, Is.EqualTo("WO-A-002"));
         }
 
         [UnityTest]

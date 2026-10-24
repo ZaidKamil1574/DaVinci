@@ -103,6 +103,15 @@
             <ui:VisualElement name="help-body" class="dc-help__body" />
         </ui:VisualElement>
 
+        <!-- Bottom right: facility minimap -->
+        <ui:VisualElement name="minimap-panel" class="dc-panel dc-minimap-panel">
+            <ui:VisualElement class="dc-panel__header">
+                <ui:Label text="FACILITY" class="dc-panel__title" />
+                <ui:Label text="Click robot: select  ·  Space+click: send" class="dc-label-muted" />
+            </ui:VisualElement>
+            <ui:VisualElement name="minimap" class="dc-minimap-host" />
+        </ui:VisualElement>
+
         <!-- Bottom centre: deadman state -->
         <ui:VisualElement name="deadman" class="dc-deadman" picking-mode="Ignore">
             <ui:Label name="deadman-key" text="SPACE" class="dc-deadman__key" />

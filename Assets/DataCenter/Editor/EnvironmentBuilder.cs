@@ -26,7 +26,7 @@ namespace DataCenter.Editor
     /// along X through the middle; Server Hall (A) and Network Core (B) are north of it, Staging (D)
     /// and Power (C) south.
     /// </remarks>
-    static class EnvironmentBuilder
+    static partial class EnvironmentBuilder
     {
         public const float HallHalfX = 20f;
         public const float HallHalfZ = 12.5f;
@@ -75,6 +75,7 @@ namespace DataCenter.Editor
             s_ServerLed = BuilderAssets.LedMaterial("LED_Server", Color.white, true, 1.6f);
             s_SignBack = BuilderAssets.LitMaterial("Sign_Back", new Color(0.06f, 0.08f, 0.11f), 0.1f, 0.5f);
             s_White = BuilderAssets.LitMaterial("White", new Color(0.92f, 0.93f, 0.94f), 0f, 0.4f);
+            CreateSectionMaterials();
         }
 
         // ---------------------------------------------------------------- Hall
@@ -220,7 +221,7 @@ namespace DataCenter.Editor
 
         public static Quaternion RackRotation(RowSpec row) => Quaternion.Euler(0f, row.facesNorth ? 0f : 180f, 0f);
 
-        public static Transform BuildSectionA(Transform parent, GameObject[] rackPrefabs, PortType rj45)
+        public static void BuildSectionA(Transform parent, GameObject[] rackPrefabs, PortType rj45, List<Rect> footprints)
         {
             var section = Child("Section A - Server Hall", parent, Vector3.zero);
             var layout = Sections[0];
@@ -229,47 +230,37 @@ namespace DataCenter.Editor
             var floor = Child("Aisle Tiles", section, Vector3.zero);
             AisleTiles(floor, "Cold Aisle A1-A2", Rect.MinMaxRect(-15f, 3.15f, -9f, 5.35f));
             AisleTiles(floor, "Cold Aisle A3-A4", Rect.MinMaxRect(-15f, 8.8f, -9f, 11f));
+            AisleTiles(floor, "Cold Aisle A5-A6", Rect.MinMaxRect(-8f, 3.15f, -2f, 5.35f));
+            AisleTiles(floor, "Cold Aisle A7-A8", Rect.MinMaxRect(-8f, 8.8f, -2f, 11f));
+
+            // Rack A-R03: a 24-port RJ45 patch panel at U38 below a 24-port top-of-rack switch at U40.
+            var special = new Dictionary<int, System.Action<Transform, string, Vector3, Quaternion>>
+            {
+                [WorkRackNumber] = (row, id, position, rotation) => BuildWorkRack(row, id, position, rotation,
+                    new DeviceSpec { name = "Patch Panel", unit = 38, units = 1, type = rj45, ports = 24, pitch = 0.0185f, opening = new Vector2(0.0135f, 0.0115f), face = s_PanelGrey, depth = 0.11f },
+                    new DeviceSpec { name = "ToR Switch", unit = 40, units = 1, type = rj45, ports = 24, pitch = 0.0185f, opening = new Vector2(0.0135f, 0.0115f), face = s_SwitchBody, depth = 0.41f }),
+            };
 
             var racks = Child("Racks", section, Vector3.zero);
-            Transform workRack = null;
-            var variant = 0;
-            foreach (var row in SectionARows)
-            {
-                var rowRoot = Child($"Row {row.name}", racks, Vector3.zero);
-                for (var i = 0; i < row.count; i++)
-                {
-                    var number = row.firstNumber + i;
-                    var position = RackPosition(row, i);
-                    var rotation = RackRotation(row);
-
-                    if (number == WorkRackNumber)
-                    {
-                        workRack = BuildWorkRack(rowRoot, $"A-R{number:00}", position, rotation, rj45);
-                        continue;
-                    }
-
-                    var instance = (GameObject)PrefabUtility.InstantiatePrefab(rackPrefabs[variant++ % rackPrefabs.Length], rowRoot);
-                    instance.name = $"A-R{number:00}";
-                    instance.transform.SetPositionAndRotation(position, rotation);
-                }
-
-                RowEndLabel(rowRoot, row, layout.accent);
-            }
+            BuildRows(racks, "A", SectionARows, rackPrefabs, layout.accent, special, footprints);
+            BuildRows(racks, "A", SectionARowsEast, rackPrefabs, layout.accent, null, footprints);
 
             // Hot aisles are contained: a roof and end doors keep exhaust air from mixing back in.
             var containment = Child("Hot Aisle Containment", section, Vector3.zero);
             HotAisle(containment, "A2-A3", -15f, -9f, 6.45f, 7.7f);
             HotAisle(containment, "A1", -15f, -9f, 1.0f, 2.05f);
+            HotAisle(containment, "A6-A7", -8f, -2f, 6.45f, 7.7f);
+            HotAisle(containment, "A5", -8f, -2f, 1.0f, 2.05f);
 
             var trays = Child("Cable Trays", section, Vector3.zero);
             foreach (var row in SectionARows)
+                TrayRun(trays, row);
+            foreach (var row in SectionARowsEast)
                 TrayRun(trays, row);
 
             var signs = Child("Signage", section, Vector3.zero);
             HangingSign(signs, "A  ·  SERVER HALL", "Cold aisle A1-A2   ·   Racks R01-R20", new Vector3(-15.9f, 2.9f, 4.25f), Quaternion.Euler(0f, -90f, 0f), layout.accent);
             HangingSign(signs, "A  ·  SERVER HALL", "Copper patching  ·  RJ45", new Vector3(-10f, 3.1f, CorridorHalfWidth + 0.05f), Quaternion.identity, layout.accent);
-
-            return workRack;
         }
 
         static void AisleTiles(Transform parent, string name, Rect area)
@@ -358,92 +349,15 @@ namespace DataCenter.Editor
             return tmp;
         }
 
-        // ---------------------------------------------------------------- Work rack
-
-        /// <summary>
-        /// The rack the robot patches: an open-frame rack (no door) with a 24-port RJ45 patch panel
-        /// at U38 and a 24-port top-of-rack switch at U40, every port a live <see cref="PortSocket"/>.
-        /// </summary>
-        static Transform BuildWorkRack(Transform parent, string rackId, Vector3 position, Quaternion rotation, PortType rj45)
-        {
-            var rack = new GameObject(rackId).transform;
-            rack.SetParent(parent, false);
-            rack.SetPositionAndRotation(position, rotation);
-
-            var collider = rack.gameObject.AddComponent<BoxCollider>();
-            collider.center = new Vector3(0f, RackHeight * 0.5f, -0.04f);
-            collider.size = new Vector3(RackWidth, RackHeight, RackDepth - 0.08f);
-            rack.gameObject.layer = BuilderAssets.Layer(BuilderAssets.EquipmentLayer);
-
-            // Open frame: sides, back, roof and four posts. No door, so ports are reachable.
-            var frame = Child("Frame", rack, Vector3.zero);
-            Box("Side L", frame, new Vector3(-RackWidth * 0.5f + 0.01f, RackHeight * 0.5f, 0f), new Vector3(0.02f, RackHeight, RackDepth), s_RackBody);
-            Box("Side R", frame, new Vector3(RackWidth * 0.5f - 0.01f, RackHeight * 0.5f, 0f), new Vector3(0.02f, RackHeight, RackDepth), s_RackBody);
-            Box("Back", frame, new Vector3(0f, RackHeight * 0.5f, -RackDepth * 0.5f + 0.01f), new Vector3(RackWidth, RackHeight, 0.02f), s_RackBody);
-            Box("Roof", frame, new Vector3(0f, RackHeight - 0.01f, 0f), new Vector3(RackWidth, 0.02f, RackDepth), s_RackBody);
-            Box("Plinth", frame, new Vector3(0f, 0.025f, 0f), new Vector3(RackWidth + 0.01f, 0.05f, RackDepth + 0.01f), s_Dark);
-            foreach (var x in new[] { -0.255f, 0.255f })
-                Box("Rail", frame, new Vector3(x, RackHeight * 0.5f, PanelFace + 0.01f), new Vector3(0.02f, RackHeight - 0.1f, 0.02f), s_Metal);
-
-            // Servers filling the rest, so the open rack does not look empty.
-            var servers = Child("Servers", rack, Vector3.zero);
-            var random = new System.Random(rackId.GetHashCode());
-            for (var unit = 1; unit <= 36;)
-            {
-                var height = random.NextDouble() < 0.4 ? 2 : 1;
-                if (random.NextDouble() < 0.2)
-                {
-                    unit += height;
-                    continue;
-                }
-
-                var y = UnitBottom + (unit - 1) * UnitHeight + height * UnitHeight * 0.5f;
-                Box($"Server U{unit}", servers, new Vector3(0f, y, PanelFace - 0.38f), new Vector3(0.44f, height * UnitHeight - 0.002f, 0.76f), s_SwitchBody);
-                Box("Bezel", servers, new Vector3(0f, y, PanelFace - 0.0f), new Vector3(0.48f, height * UnitHeight - 0.003f, 0.008f), s_Dark);
-                unit += height;
-            }
-
-            Leds("Server LEDs", servers, BuilderAssets.RackLedMesh(9), new Vector3(0f, 0f, PanelFace + 0.0045f));
-
-            BuildPatchPanel(rack, rackId, 38, rj45);
-            BuildSwitch(rack, rackId, 40, rj45);
-
-            // Rack id plate on the roof edge.
-            var plate = Child("Id Plate", rack, new Vector3(0f, RackHeight - 0.06f, RackDepth * 0.5f + 0.005f));
-            Box("Plate", plate, Vector3.zero, new Vector3(0.3f, 0.07f, 0.005f), s_White);
-            Text("Id", plate, new Vector3(0f, 0f, 0.004f), rackId, 0.45f, new Color(0.08f, 0.1f, 0.12f), new Vector2(0.28f, 0.06f)).transform.localRotation = Quaternion.Euler(0f, 180f, 0f);
-
-            return rack;
-        }
-
         /// <summary>Y of the centre of rack unit <paramref name="unit"/> (1-based).</summary>
         public static float UnitCentre(int unit) => UnitBottom + (unit - 1) * UnitHeight + UnitHeight * 0.5f;
-
-        static void BuildPatchPanel(Transform rack, string rackId, int unit, PortType type)
-        {
-            var y = UnitCentre(unit);
-            var panel = Child($"Patch Panel U{unit}", rack, new Vector3(0f, y, PanelFace));
-            Box("Face", panel, new Vector3(0f, 0f, -0.002f), new Vector3(0.4826f, UnitHeight - 0.002f, 0.004f), s_PanelGrey);
-            Box("Body", panel, new Vector3(0f, 0f, -0.06f), new Vector3(0.44f, UnitHeight - 0.004f, 0.11f), s_Dark);
-            Ports(panel, rackId, unit, type, 24);
-        }
-
-        static void BuildSwitch(Transform rack, string rackId, int unit, PortType type)
-        {
-            var y = UnitCentre(unit);
-            var device = Child($"ToR Switch U{unit}", rack, new Vector3(0f, y, PanelFace));
-            Box("Face", device, new Vector3(0f, 0f, -0.002f), new Vector3(0.4826f, UnitHeight - 0.002f, 0.004f), s_SwitchBody);
-            Box("Body", device, new Vector3(0f, 0f, -0.21f), new Vector3(0.44f, UnitHeight - 0.004f, 0.41f), s_SwitchBody);
-            Ports(device, rackId, unit, type, 24);
-        }
 
         /// <summary>
         /// Lays out a row of live ports. Port 1 is on the operator's left when facing the rack, as
         /// on real panels, which is +X in rack space.
         /// </summary>
-        static void Ports(Transform device, string rackId, int unit, PortType type, int count)
+        static void Ports(Transform device, string rackId, int unit, PortType type, int count, float pitch, Vector2 opening)
         {
-            const float pitch = 0.0185f;
             var first = (count - 1) * pitch * 0.5f;
             var portLayer = BuilderAssets.Layer(BuilderAssets.PortLayer);
 
@@ -456,9 +370,9 @@ namespace DataCenter.Editor
                 port.localRotation = Quaternion.Euler(0f, 180f, 0f);
                 port.gameObject.layer = portLayer;
 
-                var hole = Box("Opening", port, new Vector3(0f, 0f, -0.0005f), new Vector3(0.0135f, 0.0115f, 0.003f), s_PortHole);
+                var hole = Box("Opening", port, new Vector3(0f, 0f, -0.0005f), new Vector3(opening.x, opening.y, 0.003f), s_PortHole);
                 hole.layer = portLayer;
-                var led = Box("LED", port, new Vector3(0f, 0.0105f, -0.0012f), new Vector3(0.004f, 0.0025f, 0.001f), s_PortLed);
+                var led = Box("LED", port, new Vector3(0f, opening.y * 0.5f + 0.0048f, -0.0012f), new Vector3(0.004f, 0.0025f, 0.001f), s_PortLed);
                 led.layer = portLayer;
                 var ledRenderer = led.GetComponent<MeshRenderer>();
                 ledRenderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
@@ -468,7 +382,7 @@ namespace DataCenter.Editor
                 var trigger = port.gameObject.AddComponent<BoxCollider>();
                 trigger.isTrigger = true;
                 trigger.center = new Vector3(0f, 0f, 0.004f);
-                trigger.size = new Vector3(0.016f, 0.014f, 0.03f);
+                trigger.size = new Vector3(opening.x + 0.0025f, opening.y + 0.0025f, 0.03f);
 
                 var portSocket = port.gameObject.AddComponent<PortSocket>();
                 portSocket.Configure($"{rackId}-U{unit}-P{number:00}", type, socket, ledRenderer);

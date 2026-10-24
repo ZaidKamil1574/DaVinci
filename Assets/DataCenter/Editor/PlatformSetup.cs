@@ -134,8 +134,17 @@ namespace DataCenter.Editor
         /// </summary>
         public static void BuildWebGLBatch()
         {
+            // Clear what an earlier interrupted build left behind (XR, OpenXR and WebXR settings).
+            PlayerSettings.SetPreloadedAssets(System.Array.FindAll(PlayerSettings.GetPreloadedAssets(),
+                asset => asset != null && !asset.GetType().FullName.Contains("XR")));
+
             var original = EditorUserBuildSettings.activeBuildTarget;
             var originalGroup = BuildPipeline.GetBuildTargetGroup(original);
+
+            // XR and WebXR build processors add their settings to the preloaded assets for the
+            // duration of a build and remove them after. Snapshot the list so an interrupted build
+            // cannot leave them behind in the project.
+            var preloaded = PlayerSettings.GetPreloadedAssets();
             Debug.Log($"[Data Center] Active build target before WebGL build: {original}");
 
             var ok = false;
@@ -150,8 +159,10 @@ namespace DataCenter.Editor
             }
             finally
             {
+                PlayerSettings.SetPreloadedAssets(preloaded);
                 if (EditorUserBuildSettings.activeBuildTarget != original)
                     EditorUserBuildSettings.SwitchActiveBuildTarget(originalGroup, original);
+                AssetDatabase.SaveAssets();
             }
 
             EditorApplication.Exit(ok ? 0 : 1);

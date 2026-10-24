@@ -409,6 +409,38 @@
     display: flex;
 }
 
+/* ---------- Minimap ---------- */
+
+.dc-minimap-panel {
+    position: absolute;
+    right: 136px;
+    bottom: var(--dc-space-4);
+    width: 340px;
+    height: 250px;
+}
+
+.dc-minimap-host {
+    flex-grow: 1;
+}
+
+/* Colours for the hand-drawn minimap, read by MinimapElement as custom properties. */
+.dc-minimap {
+    flex-grow: 1;
+    --minimap-floor: var(--dc-surface-sunken);
+    --minimap-equipment: var(--dc-border-strong);
+    --minimap-ok: var(--dc-ok);
+    --minimap-active: var(--dc-accent);
+    --minimap-warn: var(--dc-warn);
+    --minimap-danger: var(--dc-danger);
+    --minimap-selected: var(--dc-text);
+}
+
+.dc-minimap__zone-label {
+    position: absolute;
+    font-size: var(--dc-font-xs);
+    -unity-font-style: bold;
+}
+
 /* ---------- Help ---------- */
 
 .dc-help {

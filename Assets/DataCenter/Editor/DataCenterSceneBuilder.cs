@@ -31,9 +31,6 @@ namespace DataCenter.Editor
         public const string ScenePath = BuilderAssets.ScenesFolder + "/DataCenter.unity";
         const string XROriginPrefabPath = "Assets/Samples/XR Interaction Toolkit/3.3.0/Starter Assets/Prefabs/XR Origin (XR Rig).prefab";
 
-        /// <summary>Where the Section A robot parks: in the cold aisle, facing rack A-R03.</summary>
-        static readonly Vector3 k_RobotASpawn = new Vector3(-13.5f, 0f, 4.0f);
-
         [MenuItem("Tools/Data Center/Build Scene", false, 0)]
         public static void BuildFromMenu()
         {
@@ -73,7 +70,9 @@ namespace DataCenter.Editor
             var lc = BuilderAssets.PortTypeAsset("LC", "LC Duplex Fiber", new Color(1f, 0.82f, 0.05f), 0.005f, 0.02f, 22f);
             var c13 = BuilderAssets.PortTypeAsset("C13", "IEC C13/C14 Power", new Color(0.06f, 0.06f, 0.06f), 0.011f, 0.03f, 25f);
             var spec = BuilderAssets.RobotSpecAsset();
-            var ordersA = BuilderAssets.WorkOrderSetAsset("A");
+            var orderSets = new List<WorkOrderSet>();
+            foreach (var section in EnvironmentBuilder.Sections)
+                orderSets.Add(BuilderAssets.WorkOrderSetAsset(section.id));
 
             // ---------- Prefabs
             var robotPrefab = RobotBuilder.Build(spec);
@@ -82,7 +81,7 @@ namespace DataCenter.Editor
                 rackPrefabs[i] = EnvironmentBuilder.BuildRackPrefab(i);
             var connectorRj45 = EnvironmentBuilder.BuildConnectorPrefab(rj45);
             var connectorLc = EnvironmentBuilder.BuildConnectorPrefab(lc);
-            EnvironmentBuilder.BuildConnectorPrefab(c13);
+            var connectorC13 = EnvironmentBuilder.BuildConnectorPrefab(c13);
 
             // ---------- Scene
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -90,34 +89,53 @@ namespace DataCenter.Editor
             var systems = new GameObject("Systems").transform;
             var link = systems.gameObject.AddComponent<TeleopLink>();
             var workOrders = systems.gameObject.AddComponent<WorkOrderManager>();
-            workOrders.Configure(new List<WorkOrderSet> { ordersA });
+            workOrders.Configure(orderSets);
             systems.gameObject.AddComponent<FeedbackAudio>();
 
+            // ---------- Environment
             var environment = new GameObject("Environment").transform;
+            var footprints = new List<Rect>();
             EnvironmentBuilder.BuildHall(environment);
-            EnvironmentBuilder.BuildSectionA(environment, rackPrefabs, rj45);
-            var showcase = EnvironmentBuilder.PlaceSourceModel(environment, new Vector3(-4.5f, 0f, 6.5f), 0f);
+            EnvironmentBuilder.BuildSectionDividers(environment);
+            EnvironmentBuilder.BuildSectionA(environment, rackPrefabs, rj45, footprints);
+            EnvironmentBuilder.BuildSectionB(environment, rackPrefabs, lc, footprints);
+            EnvironmentBuilder.BuildSectionC(environment, rackPrefabs, c13, footprints);
+            EnvironmentBuilder.BuildSectionD(environment, rj45, footprints);
 
-            var cart = EnvironmentBuilder.BuildCart(environment, "Cable Cart A", new Vector3(-12.7f, 0f, 4.0f), Quaternion.identity);
+            // The supplied model is an open rack with servers and loose cabling, which reads as
+            // equipment being integrated before deployment, so it lives in Staging.
+            var showcase = EnvironmentBuilder.PlaceSourceModel(environment, new Vector3(-14.5f, 0f, -7.2f), 0f);
+            if (showcase != null)
+                footprints.Add(Rect.MinMaxRect(-15.3f, -7.6f, -13.7f, -6.8f));
 
-            // ---------- Robots
+            // ---------- Robots, one per section, each with a cart of cables beside it
             var robots = new GameObject("Robots").transform;
-            var robotA = PlaceRobot(robots, robotPrefab, link, "R-A1", "Atlas", "A", k_RobotASpawn, 180f);
-
-            // ---------- Cables, lying on the cart with their plugs pointing at the rack.
             var cables = new GameObject("Cables").transform;
-            var plugRotation = Quaternion.Euler(0f, 180f, 0f);
-            var top = EnvironmentBuilder.CartTop + 0.008f;
-            // Both leads sit on the cart edge nearest the robot, within the arm's 0.84 m reach.
-            EnvironmentBuilder.PlaceCable(cables, "A-C01", connectorRj45, rj45,
-                new Pose(new Vector3(-12.86f, top, 3.80f), plugRotation),
-                new Pose(new Vector3(-12.86f, top, 3.92f), plugRotation), 2.4f);
+            var stations = new[] { EnvironmentBuilder.StationA, EnvironmentBuilder.StationB, EnvironmentBuilder.StationC, EnvironmentBuilder.StationD };
+            var placed = new List<TeleopRobot>();
+            foreach (var station in stations)
+                placed.Add(PlaceRobot(robots, robotPrefab, link, station.robotId, station.robotName, station.sectionId, station.spawn, station.yaw));
+            var robotA = placed[0];
 
-            // A fiber patch lead on the same cart: the wrong connector for a copper panel, there to
-            // show the type check rejecting it.
-            EnvironmentBuilder.PlaceCable(cables, "A-F01", connectorLc, lc,
-                new Pose(new Vector3(-12.86f, top, 4.04f), plugRotation),
-                new Pose(new Vector3(-12.86f, top, 4.16f), plugRotation), 1.6f);
+            EnvironmentBuilder.BuildStationCart(environment, cables, EnvironmentBuilder.StationA,
+                ("A-C01", connectorRj45, rj45, 2.4f), ("A-C02", connectorRj45, rj45, 2.4f),
+                // A fiber lead on a copper cart: the wrong connector, there to show the type check.
+                ("A-F01", connectorLc, lc, 1.6f));
+            EnvironmentBuilder.BuildStationCart(environment, cables, EnvironmentBuilder.StationB,
+                ("B-F01", connectorLc, lc, 2.0f), ("B-C01", connectorRj45, rj45, 2.0f));
+            EnvironmentBuilder.BuildStationCart(environment, cables, EnvironmentBuilder.StationC,
+                ("C-P01", connectorC13, c13, 1.8f));
+            EnvironmentBuilder.BuildStationCart(environment, cables, EnvironmentBuilder.StationD,
+                ("D-C01", connectorRj45, rj45, 1.6f));
+            foreach (var station in stations)
+                footprints.Add(new Rect(EnvironmentBuilder.StationPoint(station, -0.82f, 0f, 0f).x - 0.25f, EnvironmentBuilder.StationPoint(station, -0.82f, 0f, 0f).z - 0.3f, 0.5f, 0.6f));
+
+            // ---------- Floor plan for the minimap
+            var map = systems.gameObject.AddComponent<FacilityMap>();
+            var zones = new List<MapZone>();
+            foreach (var section in EnvironmentBuilder.Sections)
+                zones.Add(new MapZone { id = section.id, title = section.title, area = section.area, accent = section.accent });
+            map.Configure(Rect.MinMaxRect(-EnvironmentBuilder.HallHalfX, -EnvironmentBuilder.HallHalfZ, EnvironmentBuilder.HallHalfX, EnvironmentBuilder.HallHalfZ), zones, footprints);
 
             // ---------- Operator: handle, inputs, rigs, UI
             var handle = BuildHandle();
@@ -135,7 +153,7 @@ namespace DataCenter.Editor
             rigSelector.Configure(teleopOperator, desktopRig, desktopCamera, xrOrigin != null ? xrOrigin.transform : null, xrCamera);
             desktopCamera.Focus(robotA.transform, true);
 
-            BuildHud(teleopOperator, workOrders);
+            BuildHud(teleopOperator, workOrders, map);
             BuildVRPanel(teleopOperator, workOrders);
 
             // ---------- Lighting and atmosphere
@@ -150,7 +168,7 @@ namespace DataCenter.Editor
 
             var triangles = CountTriangles(environment) + CountTriangles(robots) + CountTriangles(cables);
             Debug.Log($"[Data Center] Built {ScenePath} in {(System.DateTime.Now - started).TotalSeconds:0.0}s. " +
-                      $"Scene triangles (all LOD0, before culling): {triangles:N0}. Showcase bay: {(showcase != null ? "placed" : "missing")}. Cart: {cart.name}.");
+                      $"Scene triangles (all LOD0, before culling): {triangles:N0}. Robots: {placed.Count}. Showcase bay: {(showcase != null ? "placed" : "missing")}.");
         }
 
         static TeleopRobot PlaceRobot(Transform parent, GameObject prefab, TeleopLink link, string id, string displayName, string section, Vector3 position, float yaw)
@@ -266,7 +284,7 @@ namespace DataCenter.Editor
             return origin;
         }
 
-        static void BuildHud(TeleopOperator teleopOperator, WorkOrderManager workOrders)
+        static void BuildHud(TeleopOperator teleopOperator, WorkOrderManager workOrders, FacilityMap map)
         {
             var panelSettingsPath = BuilderAssets.GeneratedRoot + "/UI/HudPanelSettings.asset";
             var panelSettings = BuilderAssets.LoadOrCreate<PanelSettings>(panelSettingsPath);
@@ -283,7 +301,7 @@ namespace DataCenter.Editor
             document.panelSettings = panelSettings;
             document.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(BuilderAssets.UIFolder + "/Hud.uxml");
             var controller = hud.AddComponent<HudController>();
-            controller.Configure(teleopOperator, workOrders);
+            controller.Configure(teleopOperator, workOrders, map);
         }
 
         static void BuildVRPanel(TeleopOperator teleopOperator, WorkOrderManager workOrders)

@@ -31,6 +31,9 @@ namespace DataCenter.UI
         [SerializeField]
         WorkOrderManager m_WorkOrders;
 
+        [SerializeField, Tooltip("Floor plan drawn by the minimap.")]
+        FacilityMap m_Map;
+
         [SerializeField, Tooltip("Text refreshes per second.")]
         float m_RefreshRate = 10f;
 
@@ -49,6 +52,7 @@ namespace DataCenter.UI
         VisualElement m_FromDot, m_ToDot, m_Progress, m_RobotList, m_OrderList, m_Deadman, m_EStop, m_Toasts, m_Help;
         Label m_DeadmanText, m_DeadmanKey;
         Button m_ModeDirect, m_ModeConsole, m_EStopButton;
+        MinimapElement m_Minimap;
 
         readonly Dictionary<TeleopRobot, RobotCard> m_Cards = new Dictionary<TeleopRobot, RobotCard>();
         readonly Queue<VisualElement> m_ToastQueue = new Queue<VisualElement>();
@@ -90,6 +94,7 @@ namespace DataCenter.UI
             }
 
             UIPointerGate.isOverUI = IsOverUI;
+            BuildMinimap();
             RebuildRobotList();
         }
 
@@ -146,6 +151,29 @@ namespace DataCenter.UI
             m_Help = m_Root.Q("help");
         }
 
+        void BuildMinimap()
+        {
+            var host = m_Root.Q("minimap");
+            if (host == null)
+                return;
+
+            host.Clear();
+            m_Minimap = new MinimapElement();
+            host.Add(m_Minimap);
+            m_Minimap.Bind(m_Map, () => m_Operator != null ? m_Operator.robot : null, () => m_WorkOrders != null ? m_WorkOrders.focusedSection : null, m_WorkOrders);
+            m_Minimap.robotClicked += robot => m_Operator?.Select(robot);
+            m_Minimap.floorClicked += OnMinimapFloorClicked;
+        }
+
+        void OnMinimapFloorClicked(Vector3 world)
+        {
+            if (m_Operator == null || m_Operator.robot == null)
+                return;
+
+            if (!m_Operator.RequestNavigation(world))
+                ToastEvent.Show("Hold the deadman (Space) while clicking the map to send the robot", ToastLevel.Warning);
+        }
+
         void BuildHelp()
         {
             var body = m_Root.Q("help-body");
@@ -159,6 +187,7 @@ namespace DataCenter.UI
             AddHelp(body, "RIGHT-CLICK", "Navigate to point");
             AddHelp(body, "RIGHT-DRAG", "Orbit camera");
             AddHelp(body, "H", "Home arm");
+            AddHelp(body, "1 - 4", "Switch robot");
             AddHelp(body, "BACKSPACE", "E-Stop");
         }
 
@@ -321,6 +350,7 @@ namespace DataCenter.UI
             UpdateLink();
             UpdateRobots();
             UpdateOrders();
+            m_Minimap?.Refresh(1f / Mathf.Max(1f, m_RefreshRate));
         }
 
         void UpdateSafety()
@@ -545,10 +575,11 @@ namespace DataCenter.UI
         }
 
         /// <summary>Wires the HUD from code. Used by the scene builder.</summary>
-        public void Configure(TeleopOperator teleopOperator, WorkOrderManager workOrders)
+        public void Configure(TeleopOperator teleopOperator, WorkOrderManager workOrders, FacilityMap map)
         {
             m_Operator = teleopOperator;
             m_WorkOrders = workOrders;
+            m_Map = map;
         }
     }
 }

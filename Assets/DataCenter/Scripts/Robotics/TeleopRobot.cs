@@ -128,7 +128,12 @@ namespace DataCenter.Robotics
 
         void OnEnable()
         {
-            s_All.Add(this);
+            // Keep the fleet sorted by id: OnEnable order is not guaranteed, and keys 1-4, the
+            // fleet list and the wrist menu all index into this.
+            var index = 0;
+            while (index < s_All.Count && string.CompareOrdinal(s_All[index].m_RobotId, m_RobotId) < 0)
+                index++;
+            s_All.Insert(index, this);
             registryChanged?.Invoke();
             if (m_Link != null && m_Link.transport != null)
                 m_Link.transport.CommandReceived += OnCommand;
