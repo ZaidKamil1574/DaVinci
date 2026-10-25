@@ -18,7 +18,7 @@ namespace DataCenter.Teleop
         float m_FocusHeight = 1.3f;
 
         [SerializeField]
-        float m_Distance = 2.6f;
+        float m_Distance = 2.2f;
 
         [SerializeField]
         Vector2 m_DistanceRange = new Vector2(0.8f, 12f);
@@ -32,11 +32,15 @@ namespace DataCenter.Teleop
         [SerializeField, Tooltip("How quickly the camera catches up with its target. Lower is floatier.")]
         float m_FollowSharpness = 6f;
 
+        [SerializeField, Tooltip("Layers the camera will not pass through: racks, walls, cabinets. It pulls in toward the robot instead.")]
+        LayerMask m_CollisionLayers;
+
         Transform m_Target;
         float m_Yaw;
         float m_Pitch = 16f;
         Vector3 m_Focus;
         bool m_Initialised;
+        float m_CurrentDistance = -1f;
 
         public Camera rigCamera => m_Camera;
 
@@ -47,10 +51,10 @@ namespace DataCenter.Teleop
             if (target == null)
                 return;
 
-            // Behind and to the right of the robot, looking along its forward at what it is working on,
-            // low enough to stay under the overhead cable trays (2.45 m).
-            m_Yaw = target.eulerAngles.y + 160f;
-            m_Pitch = 16f;
+            // Over the robot's shoulder: behind it and a little to one side, looking the way it faces,
+            // at what it is working on. Collision below keeps the camera inside the aisle.
+            m_Yaw = target.eulerAngles.y + 25f;
+            m_Pitch = 26f;
             if (snap || !m_Initialised)
             {
                 m_Focus = target.position + Vector3.up * m_FocusHeight;
@@ -92,12 +96,25 @@ namespace DataCenter.Teleop
                 return;
 
             var rotation = Quaternion.Euler(m_Pitch, m_Yaw, 0f);
-            m_Camera.transform.SetPositionAndRotation(m_Focus - rotation * Vector3.forward * m_Distance, rotation);
+            var back = rotation * Vector3.back;
+
+            // Pull in rather than pass through racks and walls: aisles are about two metres wide,
+            // narrower than a comfortable orbit distance. Pull in at once, ease back out.
+            var allowed = m_Distance;
+            if (m_CollisionLayers.value != 0 && Physics.SphereCast(m_Focus, 0.15f, back, out var hit, m_Distance, m_CollisionLayers, QueryTriggerInteraction.Ignore))
+                allowed = Mathf.Max(0.4f, hit.distance - 0.05f);
+
+            m_CurrentDistance = m_CurrentDistance < 0f || allowed < m_CurrentDistance
+                ? allowed
+                : Mathf.Lerp(m_CurrentDistance, allowed, 1f - Mathf.Exp(-4f * Time.unscaledDeltaTime));
+
+            m_Camera.transform.SetPositionAndRotation(m_Focus + back * m_CurrentDistance, rotation);
         }
 
         /// <summary>Wires the rig from code. Used by the scene builder.</summary>
-        public void Configure(Camera rigCamera, DesktopTeleopInput input)
+        public void Configure(Camera rigCamera, DesktopTeleopInput input, LayerMask collisionLayers)
         {
+            m_CollisionLayers = collisionLayers;
             m_Camera = rigCamera;
             m_Input = input;
         }

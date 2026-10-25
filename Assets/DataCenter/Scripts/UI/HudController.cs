@@ -46,6 +46,9 @@ namespace DataCenter.UI
         [SerializeField]
         TutorialController m_Tutorial;
 
+        [SerializeField]
+        GuidanceController m_Guidance;
+
         [SerializeField, Tooltip("Console tool speed at full stick, in metres per second.")]
         float m_ConsoleToolSpeed = 0.2f;
 
@@ -71,6 +74,7 @@ namespace DataCenter.UI
         Label m_DeadmanText, m_DeadmanKey;
         Button m_ModeDirect, m_ModeConsole, m_EStopButton;
         MinimapElement m_Minimap;
+        Label m_OrderNext;
         VisualElement m_LinkPanel, m_TutorialCard, m_TutorialDots, m_Console, m_ProximityPill, m_ProximityDot, m_WristView;
         Label m_TutorialStep, m_TutorialTime, m_TutorialText, m_ProximityValue, m_ProximityCap, m_CommandGap, m_LinkInFlight, m_LinkDetail, m_WristRate, m_WristOverlay;
         Slider m_LatencySlider, m_JitterSlider, m_LossSlider;
@@ -169,6 +173,7 @@ namespace DataCenter.UI
             m_Progress = m_Root.Q("section-progress");
             m_ProgressLabel = m_Root.Q<Label>("section-progress-label");
             m_OrderList = m_Root.Q("order-list");
+            m_OrderNext = m_Root.Q<Label>("order-next");
 
             m_Deadman = m_Root.Q("deadman");
             m_DeadmanText = m_Root.Q<Label>("deadman-text");
@@ -701,6 +706,9 @@ namespace DataCenter.UI
             var orders = m_WorkOrders.GetOrders(section);
             var active = m_WorkOrders.GetActive(section);
 
+            if (m_OrderNext != null && m_Guidance != null)
+                m_OrderNext.text = m_Guidance.instruction;
+
             var gripper = robot.gripper;
             m_Gripper.text = gripper == null ? "-" : gripper.held != null ? "HOLDING" : gripper.isClosing ? "CLOSED" : "OPEN";
 
@@ -835,8 +843,9 @@ namespace DataCenter.UI
 
         /// <summary>Wires the HUD from code. Used by the scene builder.</summary>
         public void Configure(TeleopOperator teleopOperator, WorkOrderManager workOrders, FacilityMap map,
-            WristCameraFeed wristCamera, ProximityIndicator proximity, CommandGhost ghost, TutorialController tutorial)
+            WristCameraFeed wristCamera, ProximityIndicator proximity, CommandGhost ghost, TutorialController tutorial, GuidanceController guidance)
         {
+            m_Guidance = guidance;
             m_Operator = teleopOperator;
             m_WorkOrders = workOrders;
             m_Map = map;

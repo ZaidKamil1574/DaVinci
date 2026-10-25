@@ -69,6 +69,9 @@ namespace DataCenter.Teleop
         /// <summary>Raised after the control mode changes.</summary>
         public event Action<ControlMode> modeChanged;
 
+        /// <summary>Raised when the operator asks to show or hide the VR dashboard.</summary>
+        public event Action dashboardToggled;
+
         /// <summary>The robot being controlled, or null.</summary>
         public TeleopRobot robot => m_Robot;
 
@@ -225,6 +228,7 @@ namespace DataCenter.Teleop
                 commandedPose = commandedPose,
                 robotBase = frame,
                 handle = m_Handle,
+                robotEStopped = m_Robot.isEStopped,
             };
 
             m_ActiveInputName = "None";
@@ -251,6 +255,9 @@ namespace DataCenter.Teleop
                     return;
                 frame = m_Robot.arm != null ? m_Robot.arm.baseFrame : m_Robot.transform;
             }
+
+            if (m_Intent.toggleDashboard)
+                dashboardToggled?.Invoke();
 
             if (m_Intent.toggleMode)
                 SetMode(m_Mode == ControlMode.Direct ? ControlMode.Console : ControlMode.Direct);

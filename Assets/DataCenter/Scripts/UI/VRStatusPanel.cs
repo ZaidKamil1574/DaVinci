@@ -12,6 +12,10 @@ namespace DataCenter.UI
     /// lazily to stay in view: it only moves once the head has turned well away from it, so it
     /// never swims with every small head motion.
     /// </summary>
+    /// <remarks>
+    /// Hidden until the operator presses Y, so it does not cover the work. It opens by itself on an
+    /// E-Stop or a watchdog stop, where the operator needs to read what happened.
+    /// </remarks>
     public class VRStatusPanel : MonoBehaviour
     {
         [SerializeField]
@@ -38,6 +42,12 @@ namespace DataCenter.UI
         [SerializeField, Tooltip("Quad showing the wrist camera feed.")]
         Renderer m_WristQuad;
 
+        [SerializeField, Tooltip("Next-step guidance, shown as the panel's first line.")]
+        GuidanceController m_Guidance;
+
+        [SerializeField, Tooltip("Show the panel on start. Otherwise Y shows it.")]
+        bool m_ShownOnStart;
+
         [SerializeField, Tooltip("Distance in front of the head, in metres.")]
         float m_Distance = 1.1f;
 
@@ -61,10 +71,31 @@ namespace DataCenter.UI
         bool m_Following;
         bool m_Placed;
         float m_NextRefresh;
+        bool m_Shown;
+        bool m_WasStopped;
 
-        void OnEnable() => EventBus.Subscribe<ToastEvent>(OnToast);
+        void Awake() => m_Shown = m_ShownOnStart;
 
-        void OnDisable() => EventBus.Unsubscribe<ToastEvent>(OnToast);
+        void OnEnable()
+        {
+            EventBus.Subscribe<ToastEvent>(OnToast);
+            if (m_Operator != null)
+                m_Operator.dashboardToggled += Toggle;
+        }
+
+        void OnDisable()
+        {
+            EventBus.Unsubscribe<ToastEvent>(OnToast);
+            if (m_Operator != null)
+                m_Operator.dashboardToggled -= Toggle;
+        }
+
+        void Toggle()
+        {
+            m_Shown = !m_Shown;
+            m_Placed = false;
+            m_NextRefresh = 0f;
+        }
 
         // The desktop HUD shows these as toasts; in the headset they are the panel's last line, so
         // refusals ("release the deadman first") are visible where the operator is looking.
@@ -94,11 +125,19 @@ namespace DataCenter.UI
 
         void LateUpdate()
         {
-            var immersive = XRPlatform.isImmersive;
-            if (m_Visual != null && m_Visual.activeSelf != immersive)
-                m_Visual.SetActive(immersive);
+            // Pop up on a stop so the operator can read why; stay up until they dismiss it with Y.
+            var robot = m_Operator != null ? m_Operator.robot : null;
+            var stopped = robot != null && (robot.isEStopped || robot.watchdogTripped);
+            if (stopped && !m_WasStopped && !m_Shown)
+                Toggle();
+            m_WasStopped = stopped;
 
-            if (!immersive)
+            var immersive = XRPlatform.isImmersive;
+            var show = immersive && m_Shown;
+            if (m_Visual != null && m_Visual.activeSelf != show)
+                m_Visual.SetActive(show);
+
+            if (!show)
             {
                 m_Placed = false;
                 return;
@@ -179,7 +218,7 @@ namespace DataCenter.UI
             else if (live)
                 m_Builder.Append("<color=#2EE66B><b>MOTION ENABLED</b></color>\n");
             else
-                m_Builder.Append("<color=#8B98A5>Left stick / A / B drive  ·  grip the handle to move the arm</color>\n");
+                m_Builder.Append("<color=#8B98A5>Left stick / A / B: drive  ·  right stick: gripper  ·  L2: grab  ·  Y: hide</color>\n");
 
             var sensor = m_Proximity != null ? m_Proximity.sensor : null;
             if (sensor != null && !float.IsInfinity(sensor.toolDistance))
@@ -199,6 +238,9 @@ namespace DataCenter.UI
                 m_Text.SetText(m_Builder);
                 return;
             }
+
+            if (m_Guidance != null && !string.IsNullOrEmpty(m_Guidance.instruction))
+                m_Builder.Append("<color=#19D3FF><b>NEXT</b></color>  <size=85%>").Append(m_Guidance.instruction).Append("</size>\n");
 
             var active = m_WorkOrders != null ? m_WorkOrders.GetActive(robot.sectionId) : null;
             if (active != null)
@@ -231,8 +273,9 @@ namespace DataCenter.UI
 
         /// <summary>Wires the panel from code. Used by the scene builder.</summary>
         public void Configure(TeleopOperator teleopOperator, WorkOrderManager workOrders, TextMeshPro text, GameObject visual,
-            ProximityIndicator proximity, TutorialController tutorial, WristCameraFeed wristCamera, Renderer wristQuad)
+            ProximityIndicator proximity, TutorialController tutorial, WristCameraFeed wristCamera, Renderer wristQuad, GuidanceController guidance)
         {
+            m_Guidance = guidance;
             m_Proximity = proximity;
             m_Tutorial = tutorial;
             m_WristCamera = wristCamera;

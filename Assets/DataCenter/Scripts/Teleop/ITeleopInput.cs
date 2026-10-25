@@ -67,6 +67,9 @@ namespace DataCenter.Teleop
 
         /// <summary>Switch between Direct and Console control this frame.</summary>
         public bool toggleMode;
+
+        /// <summary>Show or hide the VR dashboard this frame.</summary>
+        public bool toggleDashboard;
     }
 
     /// <summary>What an input source may need to know to interpret raw input.</summary>
@@ -83,6 +86,9 @@ namespace DataCenter.Teleop
 
         /// <summary>The grab handle at the commanded pose.</summary>
         public TargetHandle handle;
+
+        /// <summary>Whether the controlled robot's E-Stop is latched, so one button can stop and reset.</summary>
+        public bool robotEStopped;
     }
 
     /// <summary>

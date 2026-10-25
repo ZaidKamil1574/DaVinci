@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace DataCenter.Tasks
@@ -48,6 +49,26 @@ namespace DataCenter.Tasks
         public CableConnector endA => m_EndA;
         public CableConnector endB => m_EndB;
         public string cableId => m_CableId;
+
+        static readonly Dictionary<string, VerletCable> s_ById = new Dictionary<string, VerletCable>();
+
+        /// <summary>An enabled cable by id, or null.</summary>
+        public static VerletCable Find(string id) => id != null && s_ById.TryGetValue(id, out var cable) ? cable : null;
+
+        void OnEnable()
+        {
+            if (!string.IsNullOrEmpty(m_CableId))
+                s_ById[m_CableId] = this;
+        }
+
+        void OnDisable()
+        {
+            if (!string.IsNullOrEmpty(m_CableId) && s_ById.TryGetValue(m_CableId, out var registered) && registered == this)
+                s_ById.Remove(m_CableId);
+        }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => s_ById.Clear();
 
         /// <summary>Straight-line distance between the two ends as a share of the cable length.</summary>
         public float tension => m_EndA != null && m_EndB != null

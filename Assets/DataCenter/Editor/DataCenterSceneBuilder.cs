@@ -160,11 +160,15 @@ namespace DataCenter.Editor
             wristCamera.Configure(teleopOperator);
             var ghost = OperatorToolsBuilder.BuildGhost(teleopOperator);
             var proximity = OperatorToolsBuilder.BuildProximityIndicator(teleopOperator);
+            var guidance = OperatorToolsBuilder.BuildGuidance(teleopOperator, workOrders);
             if (xrOrigin != null)
+            {
                 OperatorToolsBuilder.BuildVRControls(xrOrigin, teleopOperator, tutorial);
+                OperatorToolsBuilder.BuildRightStickArbiter(systems.gameObject, xrOrigin, xrInput);
+            }
 
-            BuildHud(teleopOperator, workOrders, map, wristCamera, proximity, ghost, tutorial);
-            BuildVRPanel(teleopOperator, workOrders, proximity, tutorial, wristCamera);
+            BuildHud(teleopOperator, workOrders, map, wristCamera, proximity, ghost, tutorial, guidance);
+            BuildVRPanel(teleopOperator, workOrders, proximity, tutorial, wristCamera, guidance);
 
             // ---------- Lighting and atmosphere
             ConfigureLighting();
@@ -244,7 +248,7 @@ namespace DataCenter.Editor
             cameraObject.AddComponent<AudioListener>();
 
             rig = root.AddComponent<DesktopCameraRig>();
-            rig.Configure(camera, input);
+            rig.Configure(camera, input, BuilderAssets.Mask(BuilderAssets.EquipmentLayer));
             return root;
         }
 
@@ -339,7 +343,7 @@ namespace DataCenter.Editor
         }
 
         static void BuildHud(TeleopOperator teleopOperator, WorkOrderManager workOrders, FacilityMap map,
-            WristCameraFeed wristCamera, ProximityIndicator proximity, CommandGhost ghost, TutorialController tutorial)
+            WristCameraFeed wristCamera, ProximityIndicator proximity, CommandGhost ghost, TutorialController tutorial, GuidanceController guidance)
         {
             var panelSettingsPath = BuilderAssets.GeneratedRoot + "/UI/HudPanelSettings.asset";
             var panelSettings = BuilderAssets.LoadOrCreate<PanelSettings>(panelSettingsPath);
@@ -356,13 +360,15 @@ namespace DataCenter.Editor
             document.panelSettings = panelSettings;
             document.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(BuilderAssets.UIFolder + "/Hud.uxml");
             var controller = hud.AddComponent<HudController>();
-            controller.Configure(teleopOperator, workOrders, map, wristCamera, proximity, ghost, tutorial);
+            controller.Configure(teleopOperator, workOrders, map, wristCamera, proximity, ghost, tutorial, guidance);
         }
 
         static void BuildVRPanel(TeleopOperator teleopOperator, WorkOrderManager workOrders, ProximityIndicator proximity,
-            TutorialController tutorial, WristCameraFeed wristCamera)
+            TutorialController tutorial, WristCameraFeed wristCamera, GuidanceController guidance)
         {
+            // Compact: about three quarters of the original size, and hidden until Y.
             var root = new GameObject("VR Status Panel");
+            root.transform.localScale = Vector3.one * 0.72f;
             var visual = Child("Visual", root.transform, Vector3.zero);
             var back = Box("Backing", visual, new Vector3(0f, 0f, 0.004f), new Vector3(0.64f, 0.3f, 0.006f), BuilderAssets.UnlitMaterial("VR_Panel", new Color(0.055f, 0.075f, 0.105f)));
             back.GetComponent<MeshRenderer>().shadowCastingMode = ShadowCastingMode.Off;
@@ -387,7 +393,7 @@ namespace DataCenter.Editor
             feedRenderer.shadowCastingMode = ShadowCastingMode.Off;
 
             var panel = root.AddComponent<VRStatusPanel>();
-            panel.Configure(teleopOperator, workOrders, text, visual.gameObject, proximity, tutorial, wristCamera, feedRenderer);
+            panel.Configure(teleopOperator, workOrders, text, visual.gameObject, proximity, tutorial, wristCamera, feedRenderer, guidance);
             visual.gameObject.SetActive(false);
         }
 

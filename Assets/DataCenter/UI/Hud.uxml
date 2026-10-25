@@ -110,6 +110,10 @@
                 </ui:VisualElement>
                 <ui:Label name="order-id" text="WO-A-001" class="dc-order__id" />
                 <ui:Label name="order-summary" text="-" class="dc-order__summary" />
+                <ui:VisualElement class="dc-order__next">
+                    <ui:Label text="NEXT" class="dc-order__next-tag" />
+                    <ui:Label name="order-next" text="" class="dc-order__next-text" />
+                </ui:VisualElement>
                 <ui:VisualElement name="endpoint-from" class="dc-order__endpoint">
                     <ui:VisualElement name="endpoint-from-dot" class="dc-dot" />
                     <ui:Label text="FROM" class="dc-order__endpoint-label" />

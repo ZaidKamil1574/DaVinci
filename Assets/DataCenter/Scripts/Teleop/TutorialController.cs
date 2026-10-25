@@ -73,18 +73,18 @@ namespace DataCenter.Teleop
                 switch (m_Step)
                 {
                     case Step.Deadman:
-                        return vr ? "Squeeze and hold a GRIP. That is the deadman: nothing moves without it."
+                        return vr ? "Squeeze and hold a GRIP for a second. Every control is hold-to-run: let go and the robot stops."
                             : "Hold SPACE. That is the deadman: nothing moves without it.";
                     case Step.Grab:
-                        return vr ? "Keep gripping the cyan handle at the gripper and move your hand. The arm follows."
+                        return vr ? "Push the right stick to move the gripper, or grip the cyan handle and move your hand. The arm follows."
                             : "Keep holding SPACE and drag the cyan handle (or use the arrow keys). The arm follows.";
                     case Step.Pick:
-                        return vr ? "Put the gripper over a blue plug on the cart and pull the TRIGGER to close."
+                        return vr ? "Put the gripper over a blue plug on the cart and hold L2 (left trigger) to close."
                             : "Put the gripper over a blue plug on the cart (R/F for height) and press G to close.";
                     case Step.Insert:
                         return "Bring it to training port 1 (blinking cyan), square it up and open the gripper to seat it.";
                     case Step.EStop:
-                        return vr ? "Hit the E-STOP: Y on the left controller, or the red button." : "Hit the E-STOP: BACKSPACE, or the red button.";
+                        return vr ? "Hit the E-STOP: X on the left controller, or the red button." : "Hit the E-STOP: BACKSPACE, or the red button.";
                     case Step.Reset:
                         return vr ? "Let go of the grip and sticks, then press X to reset." : "Let go of SPACE, then press SHIFT + BACKSPACE to reset.";
                     case Step.Done:

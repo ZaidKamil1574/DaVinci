@@ -7,6 +7,7 @@ using UnityEngine.TestTools;
 using DataCenter.Robotics;
 using DataCenter.Tasks;
 using DataCenter.Teleop;
+using DataCenter.UI;
 
 namespace DataCenter.Tests
 {
@@ -205,6 +206,24 @@ namespace DataCenter.Tests
             Assert.That(sideways, Is.GreaterThan(0.1f), $"Did not slide right: {sideways * 100f:0.0} cm");
             Assert.That(Mathf.Abs(forward), Is.LessThan(0.02f), "Sideways command also moved it forward or back");
             Assert.That(Mathf.Abs(Mathf.DeltaAngle(yaw, m_Robot.transform.eulerAngles.y)), Is.LessThan(0.5f), "Sideways command turned the robot");
+        }
+
+        [UnityTest]
+        public IEnumerator GuidancePointsAtNextCableThenPort()
+        {
+            var guidance = UnityEngine.Object.FindAnyObjectByType<GuidanceController>();
+            Assert.That(guidance, Is.Not.Null, "Scene has no guidance");
+            yield return new WaitForSeconds(0.4f);
+
+            Assert.That(guidance.kind, Is.EqualTo(GuidanceKind.Pick), guidance.instruction);
+            StringAssert.Contains("A-C01", guidance.instruction);
+
+            var cable = VerletCable.Find("A-C01");
+            yield return PickUp(cable.endA);
+            yield return new WaitForSeconds(0.4f);
+
+            Assert.That(guidance.kind, Is.EqualTo(GuidanceKind.Plug), guidance.instruction);
+            StringAssert.Contains(FromPort, guidance.instruction);
         }
 
         [UnityTest]

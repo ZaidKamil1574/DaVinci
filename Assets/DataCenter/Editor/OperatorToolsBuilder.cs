@@ -97,6 +97,81 @@ namespace DataCenter.Editor
             return component;
         }
 
+        /// <summary>The next-step marker, label and guide lines.</summary>
+        public static GuidanceController BuildGuidance(TeleopOperator teleopOperator, DataCenter.Tasks.WorkOrderManager workOrders)
+        {
+            var root = new GameObject("Guidance");
+            var marker = new GameObject("Marker").transform;
+            marker.SetParent(root.transform, false);
+
+            var diamond = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            diamond.name = "Diamond";
+            diamond.transform.SetParent(marker, false);
+            diamond.transform.localScale = Vector3.one * 0.035f;
+            Object.DestroyImmediate(diamond.GetComponent<Collider>());
+            diamond.GetComponent<MeshRenderer>().sharedMaterial = BuilderAssets.UnlitMaterial("Guidance_Marker", Color.white);
+
+            // About 3.5 cm capitals: readable at two metres in the headset without covering the
+            // target. Bottom-aligned so the text grows upward, clear of the diamond.
+            var label = EnvironmentBuilder.Text("Label", marker, new Vector3(0f, 0.09f, 0f), "", 0.75f, Color.white, new Vector2(0.5f, 0.1f));
+            label.textWrappingMode = TextWrappingModes.NoWrap;
+            label.alignment = TextAlignmentOptions.Bottom;
+            NoShadows(marker.gameObject);
+
+            var pathHost = new GameObject("Path Line");
+            pathHost.transform.SetParent(root.transform, false);
+            var path = Line(pathHost, BuilderAssets.UnlitMaterial("Guidance_Line", Color.white), 0.004f);
+
+            var approachHost = new GameObject("Approach Line");
+            approachHost.transform.SetParent(root.transform, false);
+            var approach = Line(approachHost, BuilderAssets.UnlitMaterial("Guidance_Approach", new Color(0.18f, 0.9f, 0.42f)), 0.006f);
+
+            var guidance = root.AddComponent<GuidanceController>();
+            guidance.Configure(teleopOperator, workOrders, marker, diamond.transform, label, path, approach);
+            marker.gameObject.SetActive(false);
+            return guidance;
+        }
+
+        /// <summary>
+        /// Gives the rig's right-stick teleport and snap turn the stick only while the right grip is
+        /// held, so the stick otherwise moves the gripper.
+        /// </summary>
+        public static void BuildRightStickArbiter(GameObject host, XROrigin origin, XRTeleopInput input)
+        {
+            var gated = new List<Behaviour>();
+            foreach (var behaviour in origin.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (behaviour == null)
+                    continue;
+
+                var type = behaviour.GetType().Name;
+                var right = IsUnder(behaviour.transform, "Right Controller");
+                if ((type == "ControllerInputActionManager" && right) || type == "SnapTurnProvider")
+                    gated.Add(behaviour);
+
+                // Smooth turn stays off for good: only snap turn is offered, and only on the grip.
+                if (type == "ContinuousTurnProvider")
+                {
+                    behaviour.enabled = false;
+                    PrefabUtility.RecordPrefabInstancePropertyModifications(behaviour);
+                }
+            }
+
+            var arbiter = host.AddComponent<RightStickArbiter>();
+            arbiter.Configure(input, gated);
+        }
+
+        static bool IsUnder(Transform t, string ancestorName)
+        {
+            for (var p = t; p != null; p = p.parent)
+            {
+                if (p.name == ancestorName)
+                    return true;
+            }
+
+            return false;
+        }
+
         // ---------------------------------------------------------------- VR controls
 
         public static void BuildVRControls(XROrigin origin, TeleopOperator teleopOperator, TutorialController tutorial)

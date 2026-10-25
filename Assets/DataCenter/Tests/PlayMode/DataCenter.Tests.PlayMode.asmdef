@@ -6,6 +6,7 @@
         "DataCenter.Robotics",
         "DataCenter.Tasks",
         "DataCenter.Teleop",
+        "DataCenter.UI",
         "UnityEngine.TestRunner",
         "UnityEditor.TestRunner"
     ],

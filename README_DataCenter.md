@@ -74,20 +74,32 @@ directly, so the Da Vinci build is unchanged.
 
 | Input | Action |
 |---|---|
-| **Either grip** | Deadman for the arm. Gripping the handle at the gripper also grabs it: one squeeze enables and steers. |
-| **Left stick** | Move the robot, including sideways. Push the way you want it to go, as you see it: directions follow your view, not the robot's heading. Hold-to-run: let go and it stops; no grip needed. |
-| **A / B** | Rotate the robot clockwise / anticlockwise while held (hold-to-run) |
-| Right stick forward, release | Teleport yourself to where the arc lands (the arc passes through the robot, so you can land beside it) |
-| Right stick left / right | Snap turn yourself |
-| Right trigger | Close the gripper while held |
+| **Left stick** | Move the robot, including sideways, in the direction you are looking |
+| **A / B** | Rotate the robot clockwise / anticlockwise |
+| **Right stick** | Move the gripper left/right and up/down |
+| **Right stick pressed in + push** | Reach the gripper forward/back |
+| **R2 (right trigger) + right stick** | Rotate the wrist: left/right rolls, up/down tilts |
+| **L2 (left trigger)** | Close the gripper while held |
+| **Right grip** | Grab the cyan handle to move the arm by hand. While held, the right stick teleports you (push forward, release) and snap turns. |
+| **X** | E-Stop. Press X again, with hands off the controls, to reset. |
+| **Y** | Show / hide the dashboard (it also pops up by itself on an E-Stop) |
 | Left stick click | Home the arm |
-| Y | E-Stop. **X** resets it once you have let go of every control. |
 | Left-wrist menu | Robots, mode, link preset, tutorial, E-Stop reset |
 | Red pedestal beside you | E-Stop |
 | Console stand (Console mode) | Left lever: base. Right lever: tool. Knob: wrist roll. |
 
-The base is omnidirectional (mecanum-style), so it can slide along an aisle while staying square
-to a rack.
+Every motion control is hold-to-run: pushing a stick, holding A/B or holding a grip enables motion,
+and letting go of everything stops the robot. The base is omnidirectional (mecanum-style), so it
+can slide along an aisle while staying square to a rack.
+
+### Guidance
+
+For the selected robot's work order, a floating marker and label show what to do next (for
+example "1 · PICK UP RJ45 cable A-C01" over the right cable end, then "2 · PLUG IN A-R03-U38-P12"
+in front of the right port), with a guide line from the gripper to it and a green approach line
+straight out of the target port to line the plug up with. The same step, with the buttons to
+press, is the "NEXT" line on the HUD's work-order panel and on the VR dashboard. Picking up the
+wrong cable shows a warning.
 
 ### Tutorial
 

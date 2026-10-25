@@ -472,6 +472,33 @@
     display: none;
 }
 
+/* ---------- Next step guidance ---------- */
+
+.dc-order__next {
+    flex-direction: row;
+    align-items: flex-start;
+    background-color: var(--dc-accent-dim);
+    border-left-width: 3px;
+    border-color: var(--dc-accent);
+    border-radius: var(--dc-radius-1);
+    padding: var(--dc-space-2);
+    margin-bottom: var(--dc-space-2);
+}
+
+.dc-order__next-tag {
+    color: var(--dc-accent);
+    font-size: var(--dc-font-xs);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    margin-right: var(--dc-space-2);
+}
+
+.dc-order__next-text {
+    flex-shrink: 1;
+    white-space: normal;
+    font-size: var(--dc-font-sm);
+}
+
 /* ---------- Utility ---------- */
 
 .dc-hidden {
