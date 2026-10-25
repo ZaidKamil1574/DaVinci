@@ -46,6 +46,13 @@ server that sends `Content-Encoding: br` for the `.br` files (the build is Brotl
 no decompression fallback), over HTTPS or `localhost` (WebXR requires a secure context). In the
 Quest browser, open the page and press **Enter VR**.
 
+For a host you cannot configure, such as Wix's static hosting, use **Build WebGL for Static Host
+(Wix)**, which writes `Builds/WebGL-StaticHost` (18 MB, under Wix's 20 MB site limit). Wix serves no
+`Content-Encoding` header for Brotli files and returns 404 for `.wasm`, `.br`, `.data` and
+`.unityweb`, so this build turns on Unity's decompression fallback (the loader decompresses in
+JavaScript, a few seconds on first load) and renames the build files to `.bin`, which Wix serves
+byte for byte. The project's WebGL settings are restored after the build.
+
 Neither build edits the project's Build Settings: they pass the data center scene to the build
 directly, so the Da Vinci build is unchanged.
 

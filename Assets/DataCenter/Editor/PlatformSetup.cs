@@ -99,6 +99,75 @@ namespace DataCenter.Editor
         [MenuItem("Tools/Data Center/Platforms/Build WebGL (WebXR)", false, 210)]
         public static void BuildWebGL() => BuildIsolated(BuildTarget.WebGL, WebGLOutput, ConfigureWebXR);
 
+        /// <summary>
+        /// Builds WebGL for a static host that cannot be configured, such as Wix's: one that sends
+        /// no Content-Encoding header for Brotli files and only serves known file extensions.
+        /// </summary>
+        /// <remarks>
+        /// Turns on Unity's decompression fallback for this build only, so the loader decompresses
+        /// the Brotli files itself, then renames them to .bin, which such hosts serve byte for byte.
+        /// The fallback costs a few seconds of in-browser decompression on first load; the regular
+        /// WebGL build, for a host that sends the header, is unchanged.
+        /// </remarks>
+        [MenuItem("Tools/Data Center/Platforms/Build WebGL for Static Host (Wix)", false, 213)]
+        public static void BuildWebGLStaticHost()
+        {
+            var fallback = PlayerSettings.WebGL.decompressionFallback;
+            var ok = false;
+            try
+            {
+                ok = BuildIsolated(BuildTarget.WebGL, StaticHostOutput, () =>
+                {
+                    ConfigureWebXR();
+                    PlayerSettings.WebGL.decompressionFallback = true;
+                });
+            }
+            finally
+            {
+                PlayerSettings.WebGL.decompressionFallback = fallback;
+                AssetDatabase.SaveAssets();
+            }
+
+            if (ok)
+                PrepareForStaticHost(StaticHostOutput);
+        }
+
+        const string StaticHostOutput = "Builds/WebGL-StaticHost";
+        const long StaticHostSizeLimit = 20L * 1024 * 1024;
+
+        /// <summary>Renames the compressed build files to .bin and points the page at them.</summary>
+        static void PrepareForStaticHost(string output)
+        {
+            var page = Path.Combine(output, "index.html");
+            var html = File.ReadAllText(page);
+            foreach (var file in Directory.GetFiles(Path.Combine(output, "Build"), "*.unityweb"))
+            {
+                var name = Path.GetFileName(file);
+                var renamed = Path.ChangeExtension(name, ".bin");
+                File.Move(file, Path.Combine(Path.GetDirectoryName(file), renamed));
+                html = html.Replace("/" + name + "\"", "/" + renamed + "\"");
+            }
+
+            html = html.Replace("<title>Unity WebGL Player | " + ProductName + "</title>", "<title>Data Center Teleop Simulator</title>");
+            File.WriteAllText(page, html);
+
+            long bytes = 0;
+            foreach (var file in Directory.GetFiles(output, "*", SearchOption.AllDirectories))
+                bytes += new FileInfo(file).Length;
+            var size = $"{bytes / (1024f * 1024f):0.0} MB";
+            if (bytes > StaticHostSizeLimit)
+                Debug.LogWarning($"[Data Center] Static host build is {size}, over Wix's 20 MB site limit.");
+            else
+                Debug.Log($"[Data Center] Static host build ready: {size} -> {output}");
+        }
+
+        /// <summary>Batch entry: build WebGL for a static host. See <see cref="BuildWebGLStaticHost"/>.</summary>
+        public static void BuildWebGLStaticHostBatch()
+        {
+            BuildWebGLStaticHost();
+            EditorApplication.Exit(File.Exists(Path.Combine(StaticHostOutput, "index.html")) ? 0 : 1);
+        }
+
         [MenuItem("Tools/Data Center/Platforms/Build Quest APK", false, 211)]
         public static void BuildQuest() => BuildIsolated(BuildTarget.Android, QuestOutput, LogQuestXRSetup, BuildOptions.CleanBuildCache);
 
