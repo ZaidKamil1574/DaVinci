@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: DataCenter.Tasks::DataCenter.Tasks.PortType
   code: C13
   displayName: IEC C13/C14 Power
+  plainName: power cable
+  description: C13 is the standard plug on a computer power cord, the same kind that
+    powers a desktop PC.
   cableColor: {r: 0.06, g: 0.06, b: 0.06, a: 1}
   cableDiameter: 0.011
   captureRadius: 0.03

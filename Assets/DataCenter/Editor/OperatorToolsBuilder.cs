@@ -98,6 +98,14 @@ namespace DataCenter.Editor
         }
 
         /// <summary>The next-step marker, label and guide lines.</summary>
+        /// <summary>Grab-ready and plug-ready chimes, and controller haptics in VR.</summary>
+        public static InteractionFeedback BuildInteractionFeedback(TeleopOperator teleopOperator)
+        {
+            var feedback = new GameObject("Interaction Feedback").AddComponent<InteractionFeedback>();
+            feedback.Configure(teleopOperator);
+            return feedback;
+        }
+
         public static GuidanceController BuildGuidance(TeleopOperator teleopOperator, DataCenter.Tasks.WorkOrderManager workOrders)
         {
             var root = new GameObject("Guidance");

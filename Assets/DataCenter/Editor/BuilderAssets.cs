@@ -367,8 +367,23 @@ namespace DataCenter.Editor
             asset.cableDiameter = diameter;
             asset.captureRadius = radius;
             asset.captureAngle = angle;
+            (asset.plainName, asset.description) = PlainLanguage(code);
             EditorUtility.SetDirty(asset);
             return asset;
+        }
+
+        /// <summary>Everyday name and a one-line explanation of each connector, for the operator.</summary>
+        public static (string plainName, string description) PlainLanguage(string code)
+        {
+            switch (code)
+            {
+                case "LC":
+                    return ("fiber-optic cable", "LC is a small fiber-optic plug. The cable carries data as pulses of light, so it is thin and needs gentle handling.");
+                case "C13":
+                    return ("power cable", "C13 is the standard plug on a computer power cord, the same kind that powers a desktop PC.");
+                default:
+                    return ("network cable", "RJ45 is the standard network (Ethernet) plug, the same clip-in connector as on a laptop or home router cable.");
+            }
         }
 
         public static RobotSpec RobotSpecAsset()

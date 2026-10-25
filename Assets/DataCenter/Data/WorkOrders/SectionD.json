@@ -4,7 +4,7 @@
   "orders": [
     {
       "id": "WO-D-T01",
-      "summary": "Training: connect training panel port 1 to port 6",
+      "summary": "Practice run: connect training panel port 1 to port 6 with a network cable.",
       "portType": "RJ45",
       "from": "D-T01-U20-P01",
       "to": "D-T01-U20-P06",

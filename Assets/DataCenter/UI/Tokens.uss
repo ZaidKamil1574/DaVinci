@@ -50,6 +50,7 @@
 
     /* Layout */
     --dc-topbar-height: 44px;
-    --dc-column-left: 280px;
-    --dc-column-right: 300px;
+    --dc-column-left: 260px;
+    --dc-wristcam-width: 330px;
+    --dc-column-right: 340px;
 }

@@ -55,6 +55,9 @@ namespace DataCenter.Tasks
         /// <summary>An enabled cable by id, or null.</summary>
         public static VerletCable Find(string id) => id != null && s_ById.TryGetValue(id, out var cable) ? cable : null;
 
+        /// <summary>Every enabled cable.</summary>
+        public static IEnumerable<VerletCable> all => s_ById.Values;
+
         void OnEnable()
         {
             if (!string.IsNullOrEmpty(m_CableId))

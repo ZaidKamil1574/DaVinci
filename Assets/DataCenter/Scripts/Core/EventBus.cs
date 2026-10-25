@@ -83,6 +83,24 @@ namespace DataCenter
         OrderComplete,
         SectionComplete,
         Warning,
+
+        /// <summary>The gripper is close enough to a plug to grab it.</summary>
+        GrabReady,
+
+        /// <summary>A held plug is lined up with a port: it will plug in (assist) or seat on release.</summary>
+        PlugReady,
+
+        /// <summary>The robot ran into a wall or partition: a dull thud.</summary>
+        Bump,
+
+        /// <summary>The robot ran into a rack, server or other metal equipment: a clank.</summary>
+        BumpMetal,
+
+        /// <summary>The robot ran into the cable cart: a light rattle.</summary>
+        BumpCart,
+
+        /// <summary>A loose plug knocked against something: a small plastic click, louder for harder hits.</summary>
+        PlugTap,
     }
 
     /// <summary>Request to play a <see cref="FeedbackCue"/> at a position.</summary>
@@ -91,8 +109,30 @@ namespace DataCenter
         public FeedbackCue cue;
         public Vector3 position;
 
-        public static void Play(FeedbackCue cue, Vector3 position) =>
-            EventBus.Publish(new FeedbackEvent { cue = cue, position = position });
+        /// <summary>How hard, 0 to 1. Scales the volume of impact sounds.</summary>
+        public float strength;
+
+        public static void Play(FeedbackCue cue, Vector3 position, float strength = 1f) =>
+            EventBus.Publish(new FeedbackEvent { cue = cue, position = position, strength = strength });
+
+        /// <summary>
+        /// The impact sound for running into <paramref name="collider"/>: walls and partitions thud,
+        /// the cable cart rattles, and racks, servers and other equipment clank. Read from the
+        /// object names the scene builder gives them.
+        /// </summary>
+        public static FeedbackCue ImpactCue(Collider collider)
+        {
+            for (var t = collider != null ? collider.transform : null; t != null; t = t.parent)
+            {
+                var name = t.name;
+                if (name.StartsWith("Wall") || name == "Walls" || name == "Section Dividers")
+                    return FeedbackCue.Bump;
+                if (name.StartsWith("Cable Cart"))
+                    return FeedbackCue.BumpCart;
+            }
+
+            return FeedbackCue.BumpMetal;
+        }
     }
 
     /// <summary>

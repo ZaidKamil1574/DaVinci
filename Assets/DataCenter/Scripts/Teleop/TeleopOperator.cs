@@ -51,6 +51,14 @@ namespace DataCenter.Teleop
         [SerializeField, Tooltip("Robot selected on start. Empty selects the first robot found.")]
         string m_InitialRobotId;
 
+        [SerializeField, Tooltip("Layers the tool cannot be commanded into: racks, walls, carts. Defaults to Equipment.")]
+        LayerMask m_BlockingLayers;
+
+        // A small sphere round the tool tip, so it can still come down onto a plug lying on the cart.
+        const float k_ToolRadius = 0.005f;
+        const float k_ToolSkin = 0.001f;
+        const float k_BumpInterval = 0.6f;
+
         readonly List<ITeleopInput> m_Inputs = new List<ITeleopInput>();
         TeleopRobot m_Robot;
         uint m_Sequence;
@@ -63,6 +71,7 @@ namespace DataCenter.Teleop
         string m_ActiveInputName = "None";
         bool m_PendingNav;
         Vector3 m_PendingNavGoal;
+        float m_NextToolBumpAt;
 
         /// <summary>Raised after the controlled robot changes.</summary>
         public event Action<TeleopRobot> robotSelected;
@@ -124,7 +133,13 @@ namespace DataCenter.Teleop
                 if (m_InputSources[i] is ITeleopInput input)
                     m_Inputs.Add(input);
             }
+
+            if (m_BlockingLayers.value == 0)
+                m_BlockingLayers = LayerMask.GetMask("Equipment");
         }
+
+        /// <summary>Whether the last arm command was stopped at the surface of a rack, wall or cart.</summary>
+        public bool toolBlocked { get; private set; }
 
         void Start()
         {
@@ -320,6 +335,7 @@ namespace DataCenter.Teleop
 
         void ApplyArmIntent(Transform frame, float deltaTime)
         {
+            var previous = m_CommandedLocal.position;
             if (m_Intent.homeArm)
                 m_CommandedLocal = new Pose(m_Robot.readyPosition, m_Robot.readyRotation);
 
@@ -341,6 +357,45 @@ namespace DataCenter.Teleop
                 m_CommandedLocal.rotation *= Quaternion.Euler(pitch * deltaTime, 0f, roll * deltaTime);
 
             m_CommandedLocal.position = ClampToWorkspace(m_CommandedLocal.position);
+            m_CommandedLocal.position = BlockByEquipment(frame, previous, m_CommandedLocal.position);
+        }
+
+        /// <summary>
+        /// Stops the commanded tool point at the surface of equipment rather than inside it, and
+        /// slides it along the surface with what is left of the move, so pressing the gripper at a
+        /// rack moves it across the face instead of through it.
+        /// </summary>
+        /// <remarks>
+        /// Work racks are open frames whose collider sits behind the patch panels and switches, so
+        /// the tool still reaches every port. Only the tool tip is checked, not the arm's links.
+        /// </remarks>
+        Vector3 BlockByEquipment(Transform frame, Vector3 fromLocal, Vector3 toLocal)
+        {
+            toolBlocked = false;
+            var from = frame.TransformPoint(fromLocal);
+            var delta = frame.TransformPoint(toLocal) - from;
+            var distance = delta.magnitude;
+            if (distance < 1e-6f || m_BlockingLayers.value == 0)
+                return toLocal;
+
+            var direction = delta / distance;
+            if (!Physics.SphereCast(from, k_ToolRadius, direction, out var hit, distance + k_ToolSkin, m_BlockingLayers, QueryTriggerInteraction.Ignore))
+                return toLocal;
+
+            var reached = from + direction * Mathf.Max(0f, hit.distance - k_ToolSkin);
+            var slide = Vector3.ProjectOnPlane(from + delta - reached, hit.normal);
+            var slideDistance = slide.magnitude;
+            if (slideDistance > 1e-5f && Physics.SphereCast(reached, k_ToolRadius, slide / slideDistance, out var second, slideDistance + k_ToolSkin, m_BlockingLayers, QueryTriggerInteraction.Ignore))
+                slide = slide / slideDistance * Mathf.Max(0f, second.distance - k_ToolSkin);
+
+            toolBlocked = true;
+            if (Time.time >= m_NextToolBumpAt)
+            {
+                m_NextToolBumpAt = Time.time + k_BumpInterval;
+                FeedbackEvent.Play(FeedbackEvent.ImpactCue(hit.collider), hit.point, 0.6f);
+            }
+
+            return frame.InverseTransformPoint(reached + slide);
         }
 
         /// <summary>

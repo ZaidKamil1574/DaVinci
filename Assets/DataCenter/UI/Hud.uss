@@ -170,9 +170,18 @@
     top: 56px;
 }
 
+/* The fleet list is narrow; the wrist camera under it is wider, so the column sizes to that. */
 .dc-column--left {
     left: var(--dc-space-3);
+    align-items: flex-start;
+}
+
+.dc-fleet {
     width: var(--dc-column-left);
+}
+
+.dc-wristcam {
+    width: var(--dc-wristcam-width);
 }
 
 .dc-column--right {
@@ -186,13 +195,14 @@
 
 /* ---------- Robot cards ---------- */
 
+/* Two lines per robot: name, id and state; then battery and current task. */
 .dc-robot-card {
     background-color: var(--dc-surface-raised);
     border-radius: var(--dc-radius-1);
     border-left-width: 3px;
     border-color: rgba(0, 0, 0, 0);
-    padding: var(--dc-space-2) var(--dc-space-3);
-    margin-bottom: var(--dc-space-2);
+    padding: 5px var(--dc-space-2);
+    margin-bottom: var(--dc-space-1);
 }
 
 .dc-robot-card:hover {
@@ -205,26 +215,42 @@
 
 .dc-robot-card__row {
     flex-direction: row;
-    justify-content: space-between;
     align-items: center;
-    margin-bottom: var(--dc-space-1);
+}
+
+.dc-robot-card__row--detail {
+    margin-top: 3px;
 }
 
 .dc-robot-card__name {
-    font-size: var(--dc-font-md);
+    font-size: var(--dc-font-sm);
     -unity-font-style: bold;
 }
 
-.dc-robot-card__meta {
-    flex-direction: row;
-    align-items: center;
+.dc-robot-card__id {
+    flex-grow: 1;
+    margin-left: var(--dc-space-2);
+}
+
+.dc-robot-card__bar {
+    width: 44px;
+    flex-grow: 0;
+    flex-shrink: 0;
 }
 
 .dc-robot-card__battery {
-    width: 40px;
-    -unity-text-align: middle-right;
+    width: 32px;
+    margin-left: var(--dc-space-1);
     font-size: var(--dc-font-xs);
     color: var(--dc-text-muted);
+}
+
+.dc-robot-card__task {
+    flex-grow: 1;
+    flex-shrink: 1;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 /* ---------- Work orders ---------- */
@@ -266,10 +292,42 @@
     font-size: var(--dc-font-xs);
 }
 
+/* "Patch panel port 12  in rack A-R03" on one line. */
+.dc-order__endpoint-text {
+    flex-grow: 1;
+    flex-direction: row;
+    align-items: center;
+}
+
+.dc-order__endpoint-text > .dc-label-muted {
+    margin-left: var(--dc-space-2);
+}
+
 .dc-order__endpoint-port {
     -unity-font-style: bold;
     font-size: var(--dc-font-xs);
-    flex-grow: 1;
+}
+
+/* What the cable is, in a sentence, for anyone who has never handled one. */
+.dc-order__cable {
+    flex-direction: row;
+    align-items: flex-start;
+    margin-bottom: var(--dc-space-2);
+}
+
+.dc-order__cable-tag {
+    color: var(--dc-text-muted);
+    font-size: var(--dc-font-xs);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    margin-right: var(--dc-space-2);
+}
+
+.dc-order__cable-text {
+    flex-shrink: 1;
+    white-space: normal;
+    font-size: var(--dc-font-xs);
+    color: var(--dc-text-muted);
 }
 
 .dc-order__stats {
@@ -439,8 +497,8 @@
     position: absolute;
     right: 136px;
     bottom: var(--dc-space-4);
-    width: 340px;
-    height: 212px;
+    width: 240px;
+    height: 170px;
 }
 
 .dc-minimap-host {
@@ -468,10 +526,11 @@
 /* ---------- Controls panel ---------- */
 
 /* Between the fleet column and the minimap, above the proximity and deadman pills. */
+/* Beside the wrist camera, short of the minimap. */
 .dc-help {
     position: absolute;
-    left: 304px;
-    right: 488px;
+    left: 354px;
+    right: 428px;
     bottom: 104px;
     padding: var(--dc-space-2) var(--dc-space-3);
 }
@@ -498,7 +557,7 @@
 
 .dc-help--collapsed {
     left: auto;
-    right: 488px;
+    right: 428px;
 }
 
 .dc-help--collapsed .dc-panel__header {
@@ -506,7 +565,7 @@
 }
 
 .dc-help__group {
-    margin-right: var(--dc-space-2);
+    margin-right: var(--dc-space-1);
 }
 
 .dc-help__group-title {
@@ -567,7 +626,7 @@
 .dc-keys__item {
     flex-direction: row;
     align-items: center;
-    padding: 2px var(--dc-space-2) 2px 2px;
+    padding: 2px 6px 2px 2px;
     margin: 0 var(--dc-space-1) var(--dc-space-1) 0;
     border-radius: var(--dc-radius-1);
     background-color: var(--dc-accent-dim);
@@ -579,7 +638,7 @@
 }
 
 .dc-keys__action {
-    font-size: var(--dc-font-sm);
+    font-size: var(--dc-font-xs);
     color: var(--dc-text);
     margin-left: 2px;
 }
@@ -613,23 +672,31 @@
 
 /* ---------- Link and performance ---------- */
 
-/* A slim card under the top bar, centred: two live graphs and the link numbers. */
+/* Under the work order: latency and frame rate as numbers with a graph each, then the rest. */
 .dc-perf {
-    position: absolute;
-    top: 52px;
-    left: 50%;
-    translate: -50% 0;
+    padding: var(--dc-space-2) var(--dc-space-3);
+}
+
+.dc-perf > .dc-panel__header {
+    margin-bottom: var(--dc-space-1);
+}
+
+.dc-perf__row {
     flex-direction: row;
     align-items: center;
-    padding: var(--dc-space-1) var(--dc-space-3);
+    margin-bottom: var(--dc-space-1);
 }
 
 .dc-perf__metric {
-    width: 78px;
+    width: 96px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    margin-right: var(--dc-space-2);
 }
 
 .dc-perf__value {
-    font-size: var(--dc-font-md);
+    font-size: var(--dc-font-sm);
     -unity-font-style: bold;
 }
 
@@ -638,8 +705,8 @@
 }
 
 .dc-perf__graph {
-    width: 110px;
-    height: 30px;
+    flex-grow: 1;
+    height: 22px;
     border-radius: var(--dc-radius-1);
     background-color: var(--dc-surface-sunken);
 }
@@ -658,16 +725,14 @@
     --sparkline-line: var(--dc-ok);
 }
 
-.dc-perf__divider {
-    width: 1px;
-    height: 30px;
-    margin: 0 var(--dc-space-3);
-    background-color: var(--dc-border);
+.dc-perf__footer {
+    flex-direction: row;
+    justify-content: space-between;
 }
 
-.dc-perf__extra .dc-stat__value {
+.dc-perf__footer .dc-stat__value {
     font-size: var(--dc-font-xs);
-    min-width: 40px;
+    min-width: 0;
 }
 
 /* ---------- Utility ---------- */
@@ -679,7 +744,7 @@
 /* ---------- Wrist camera ---------- */
 
 .dc-wristcam__view {
-    height: 120px;
+    height: 198px;
     border-radius: var(--dc-radius-1);
     background-color: var(--dc-surface-sunken);
     -unity-background-scale-mode: scale-and-crop;
@@ -842,7 +907,7 @@
 
 .dc-toasts {
     position: absolute;
-    top: 118px;
+    top: 56px;
     left: 50%;
     translate: -50% 0;
     width: 460px;

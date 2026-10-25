@@ -26,7 +26,7 @@ namespace DataCenter.UI
         [SerializeField] float m_QuestRate = 10f;
 
         [Header("Web")]
-        [SerializeField] Vector2Int m_WebSize = new Vector2Int(320, 200);
+        [SerializeField] Vector2Int m_WebSize = new Vector2Int(480, 300);
         [SerializeField] float m_WebRate = 12f;
 
         RenderTexture m_Texture;

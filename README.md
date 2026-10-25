@@ -24,10 +24,10 @@ own scene and is left untouched.
 ### 1. Get the project
 
 ```bash
-git clone https://github.com/ZaidKamil1574/DaVinci.git
+git clone https://github.com/ZaidKamil1574/Robot-Teleoperation.git
 ```
 
-In **Unity Hub**, click **Add > Add project from disk**, pick the `DaVinci` folder and open it with
+In **Unity Hub**, click **Add > Add project from disk**, pick the `Robot-Teleoperation` folder and open it with
 Unity **6000.4.0f1**. If Hub says Android support is missing: **Installs > 6000.4.0f1 > gear icon >
 Add modules > Android Build Support** (tick OpenJDK and Android SDK & NDK Tools too).
 
@@ -82,7 +82,14 @@ let go and the robot stops.
 | X | E-Stop. Press X again, hands off the controls, to reset |
 | Y | Show / hide the dashboard |
 
+The controllers buzz faster as the gripper gets close to a cable or a held cable gets close to
+its port, a chime plays when you can grab (L2) and when the plug is lined up, and a thud plus a
+buzz means the robot ran into a rack: it cannot drive or reach through equipment.
+
 Keyboard controls for the browser version are in [README_DataCenter.md](README_DataCenter.md#controls).
+
+To watch a job done for you first, press **AUTO DEMO** in the top bar (desktop or browser): each
+robot in turn picks up its cable and plugs it in. Press any key to take over.
 
 ### If something goes wrong
 

@@ -87,9 +87,18 @@ same keys are on screen in the **Keyboard controls** panel (C hides and shows it
 | Backspace / Shift + Backspace | E-Stop / reset (reset refused while a movement key is held) |
 | C | Hide / show the keyboard controls panel |
 
-**HUD.** The **Link & performance** card under the top bar shows link latency and frame rate as
-numbers and as graphs of the last eight seconds (dashed lines: the 100 ms latency budget and the
-60 fps target, 72 on Quest), with frame time, packet loss and command age beside them.
+**HUD.** Left: the robots, two lines each, and a large wrist camera. Right: the work order in plain
+words (what to connect, what the cable is, the next step, the keys to press now, and the two ports
+by name), and under it the **Link & performance** card with link latency and frame rate as numbers
+and as graphs of the last eight seconds (dashed lines: the 100 ms latency budget and the 60 fps
+target, 72 on Quest), plus frame time, packet loss and command age. Bottom: keyboard controls,
+safety banner, minimap (it steps aside in very short windows) and the E-Stop.
+
+**Auto demo.** **AUTO DEMO** in the top bar hands each robot in turn its current work order and
+lets it finish the job by itself: pick up the cable, plug in both ends, put the arm away, with the
+guidance, chimes and sounds running as usual. It drives through the same operator, link and
+safety layer as a person. Press any key (or the E-Stop) to take over at once; the button reads
+**STOP DEMO** while it runs.
 
 **Live key hints.** For the current step the guidance works out which keys close the gap to the
 target and how far, using the same screen-relative directions as the arrows: for example
@@ -138,6 +147,32 @@ From about 8 cm the port LED turns white to show it is about to snap. Assist onl
 target port and the right connector type, so plugging into the wrong port or offering the wrong
 cable still needs, and is still scored as, a deliberate manual insertion. With assist off,
 insertion is fully manual: line up within 2 cm and 25° and open the gripper.
+
+### Collisions
+
+Robots cannot drive or reach through equipment. Every drive step sweeps the base footprint and
+the arm's tool tip against racks, walls, carts and the showcase bay first: a move into one stops
+at the surface and slides along it, and a turn that would swing the base or the arm into one does
+not happen. The gripper is held to the same rule when the arm moves: pressing it at a rack moves it
+across the face, not into it. Work racks are open frames whose collider sits behind the patch
+panels and switches, so every port stays reachable. Running into something plays a low thud (and a
+buzz on the controllers in VR), with a note on screen now and then. Only the base and the tool tip
+are checked; the arm's other links can still pass through a rack edge.
+
+### Sound and touch cues
+
+- **Grab chime** (two bright rising notes): the gripper is within reach of a free plug. Tap
+  **Shift** (desktop) or squeeze **L2** (Quest) to grab it.
+- **Plug chime** (three rising notes): the held plug is lined up with its port. With insertion
+  assist it plugs itself in a moment later; with assist off, letting go now seats it.
+- **Impact sounds**: running into something sounds like what it is: a metallic clank for racks,
+  servers and other equipment, a dull thud for walls and partitions, a light rattle for the cable
+  cart, louder the faster the robot was going. A loose plug that drops or knocks against something
+  gives a small plastic click.
+- **On the Quest controllers:** pulses on the right controller that come faster and stronger as
+  the gripper closes on a plug, or a held plug closes on its port (from 15 cm); a firm buzz on the
+  left controller, the one that grabs, when a grab is ready; and a buzz for every grip, release,
+  link-up, rejected plug, bump and E-Stop. The same haptics work in the Quest browser's VR mode.
 
 ### Tutorial
 
@@ -301,6 +336,7 @@ or use OVR Metrics Tool's overlay.
   meshes are Unity primitives without non-overlapping lightmap UVs, and lightmaps would add several
   MB to the web download.
 - Cables are visual Verlet ropes; they do not collide with equipment.
+- Collision checks cover the robot base and the tool tip, not the arm's links between them.
 - Connectors snap square into the gripper when picked up, as V-groove fingers would; insertion
   then depends only on the wrist and position.
 - The quadruped for Section D was not built.
@@ -345,4 +381,6 @@ unity test "/Volumes/Zaid/DaVinci/DaVinci copy" --mode PlayMode --filter DataCen
 EditMode covers the simulated link (latency, reordering under jitter, loss rate, JSON round trip).
 PlayMode drives the real scene through the operator: a scripted robot completes WO-A-001 end to end,
 and the deadman, E-Stop latch and reset rule, watchdog, wrong-type rejection, proximity speed cap,
-robot hand-over and tutorial start are each checked.
+robot hand-over and tutorial start are each checked, as are the collisions (driving at a rack stops
+the base short of it; commanding the gripper into a rack stops it at the surface), the grab and
+plug chimes during a real pick and insert, and the auto demo completing one job on every robot.

@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: DataCenter.Tasks::DataCenter.Tasks.PortType
   code: LC
   displayName: LC Duplex Fiber
+  plainName: fiber-optic cable
+  description: LC is a small fiber-optic plug. The cable carries data as pulses of
+    light, so it is thin and needs gentle handling.
   cableColor: {r: 1, g: 0.82, b: 0.05, a: 1}
   cableDiameter: 0.005
   captureRadius: 0.02

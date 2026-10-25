@@ -209,6 +209,97 @@ namespace DataCenter.Tests
         }
 
         [UnityTest]
+        public IEnumerator BaseStopsAtTheRackInsteadOfDrivingThrough()
+        {
+            var equipment = LayerMask.GetMask("Equipment");
+            var body = m_Robot.GetComponent<BoxCollider>();
+            Assert.That(body, Is.Not.Null, "Robot has no body collider");
+
+            // Atlas starts facing rack A-R03. Drive straight at it for longer than it takes to arrive.
+            var start = m_Robot.transform.position;
+            var wasBlocked = false;
+            m_Input.next.deadman = true;
+            m_Input.next.baseDrive = new Vector2(0f, 1f);
+            for (var t = 0f; t < 6f; t += Time.deltaTime)
+            {
+                wasBlocked |= m_Robot.mobileBase.blocked;
+                yield return null;
+            }
+
+            m_Input.next.baseDrive = Vector2.zero;
+            var centre = body.transform.TransformPoint(body.center);
+            var half = Vector3.Scale(body.size * 0.5f, body.transform.lossyScale) * 0.98f;
+            Assert.That(wasBlocked, Is.True, $"Never reported running into anything after {Vector3.Distance(start, m_Robot.transform.position):0.00} m");
+            Assert.That(Physics.CheckBox(centre, half, body.transform.rotation, equipment, QueryTriggerInteraction.Ignore), Is.False, "Base drove into equipment");
+            Assert.That(Physics.CheckSphere(m_Robot.arm.toolTip.position, 0.01f, equipment, QueryTriggerInteraction.Ignore), Is.False, "Arm was driven into equipment");
+        }
+
+        [UnityTest]
+        public IEnumerator GripperStopsAtTheRackSurface()
+        {
+            var equipment = LayerMask.GetMask("Equipment");
+            var port = PortSocket.Find(FromPort);
+            var into = Quaternion.LookRotation(port.socket.forward, Vector3.up);
+
+            // Twenty centimetres behind the patch panel: inside the rack body.
+            m_Input.next.deadman = true;
+            m_Input.next.hasArmPose = true;
+            m_Input.next.armPose = new Pose(port.socket.position + port.socket.forward * 0.2f, into);
+            yield return new WaitForSeconds(3f);
+
+            Assert.That(m_Operator.toolBlocked, Is.True, "The command into the rack was not stopped");
+            Assert.That(Physics.CheckSphere(m_Robot.arm.toolTip.position, 0.003f, equipment, QueryTriggerInteraction.Ignore), Is.False, "Gripper went into the rack");
+        }
+
+        [UnityTest]
+        public IEnumerator ChimesWhenAPlugIsInReachAndWhenItLinesUpWithThePort()
+        {
+            Assert.That(UnityEngine.Object.FindAnyObjectByType<InteractionFeedback>(), Is.Not.Null, "Scene has no interaction feedback");
+
+            var grabReady = 0;
+            var plugReady = 0;
+            void OnFeedback(FeedbackEvent e)
+            {
+                if (e.cue == FeedbackCue.GrabReady) grabReady++;
+                if (e.cue == FeedbackCue.PlugReady) plugReady++;
+            }
+
+            EventBus.Subscribe<FeedbackEvent>(OnFeedback);
+            try
+            {
+                var cable = VerletCable.Find("A-C01");
+                yield return PickUp(cable.endA);
+                Assert.That(grabReady, Is.GreaterThanOrEqualTo(1), "No grab-ready chime when the gripper reached the plug");
+
+                yield return Insert(PortSocket.Find(FromPort));
+                Assert.That(plugReady, Is.GreaterThanOrEqualTo(1), "No plug-ready chime when the plug reached its port");
+            }
+            finally
+            {
+                EventBus.Unsubscribe<FeedbackEvent>(OnFeedback);
+            }
+        }
+
+        [UnityTest]
+        public IEnumerator AutoDemoCompletesOneJobOnEachRobot()
+        {
+            var demo = UnityEngine.Object.FindAnyObjectByType<DemoPilot>();
+            Assert.That(demo, Is.Not.Null, "Scene has no auto demo");
+            var orders = UnityEngine.Object.FindAnyObjectByType<WorkOrderManager>();
+            var jobs = new System.Collections.Generic.List<WorkOrderProgress>();
+            foreach (var robot in TeleopRobot.all)
+                jobs.Add(orders.GetActive(robot.sectionId));
+
+            // The scripted test input is idle, so the demo drives alone.
+            demo.Begin();
+            Assert.That(demo.isRunning, Is.True, "Demo did not start");
+            yield return WaitUntil(() => !demo.isRunning, 150f, "the demo to finish");
+
+            foreach (var job in jobs)
+                Assert.That(job.status, Is.EqualTo(OrderStatus.Complete), $"{job.order.id} was not completed by the demo ({job.endsDone}/2 ends)");
+        }
+
+        [UnityTest]
         public IEnumerator GuidancePointsAtNextCableThenPort()
         {
             var guidance = UnityEngine.Object.FindAnyObjectByType<GuidanceController>();
@@ -223,7 +314,7 @@ namespace DataCenter.Tests
             yield return new WaitForSeconds(0.4f);
 
             Assert.That(guidance.kind, Is.EqualTo(GuidanceKind.Plug), guidance.instruction);
-            StringAssert.Contains(FromPort, guidance.instruction);
+            StringAssert.Contains("patch panel port 12", guidance.instruction);
         }
 
         [UnityTest]

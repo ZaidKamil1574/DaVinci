@@ -161,13 +161,16 @@ namespace DataCenter.Editor
             var ghost = OperatorToolsBuilder.BuildGhost(teleopOperator);
             var proximity = OperatorToolsBuilder.BuildProximityIndicator(teleopOperator);
             var guidance = OperatorToolsBuilder.BuildGuidance(teleopOperator, workOrders);
+            OperatorToolsBuilder.BuildInteractionFeedback(teleopOperator);
+            var demo = systems.gameObject.AddComponent<DemoPilot>();
+            demo.Configure(teleopOperator, workOrders);
             if (xrOrigin != null)
             {
                 OperatorToolsBuilder.BuildVRControls(xrOrigin, teleopOperator, tutorial);
                 OperatorToolsBuilder.BuildRightStickArbiter(systems.gameObject, xrOrigin, xrInput);
             }
 
-            BuildHud(teleopOperator, workOrders, map, wristCamera, proximity, ghost, tutorial, guidance);
+            BuildHud(teleopOperator, workOrders, map, wristCamera, proximity, ghost, tutorial, guidance, demo);
             BuildVRPanel(teleopOperator, workOrders, proximity, tutorial, wristCamera, guidance);
 
             // ---------- Lighting and atmosphere
@@ -343,7 +346,7 @@ namespace DataCenter.Editor
         }
 
         static void BuildHud(TeleopOperator teleopOperator, WorkOrderManager workOrders, FacilityMap map,
-            WristCameraFeed wristCamera, ProximityIndicator proximity, CommandGhost ghost, TutorialController tutorial, GuidanceController guidance)
+            WristCameraFeed wristCamera, ProximityIndicator proximity, CommandGhost ghost, TutorialController tutorial, GuidanceController guidance, DemoPilot demo)
         {
             var panelSettingsPath = BuilderAssets.GeneratedRoot + "/UI/HudPanelSettings.asset";
             var panelSettings = BuilderAssets.LoadOrCreate<PanelSettings>(panelSettingsPath);
@@ -360,7 +363,7 @@ namespace DataCenter.Editor
             document.panelSettings = panelSettings;
             document.visualTreeAsset = AssetDatabase.LoadAssetAtPath<VisualTreeAsset>(BuilderAssets.UIFolder + "/Hud.uxml");
             var controller = hud.AddComponent<HudController>();
-            controller.Configure(teleopOperator, workOrders, map, wristCamera, proximity, ghost, tutorial, guidance);
+            controller.Configure(teleopOperator, workOrders, map, wristCamera, proximity, ghost, tutorial, guidance, demo);
         }
 
         static void BuildVRPanel(TeleopOperator teleopOperator, WorkOrderManager workOrders, ProximityIndicator proximity,

@@ -202,6 +202,26 @@ namespace DataCenter.Tasks
             m_Body.angularVelocity = Vector3.zero;
         }
 
+        // Plugs settle onto the cart when the scene starts; that is not worth a sound.
+        const float k_QuietAfterLoad = 2f;
+        const float k_TapSpeed = 0.35f;
+        float m_NextTapAt;
+
+        /// <summary>A loose plug knocking into the cart, the floor or a rack clicks, louder for harder hits.</summary>
+        void OnCollisionEnter(Collision collision)
+        {
+            if (m_State != ConnectorState.Free || Time.timeSinceLevelLoad < k_QuietAfterLoad || Time.time < m_NextTapAt)
+                return;
+
+            var speed = collision.relativeVelocity.magnitude;
+            if (speed < k_TapSpeed)
+                return;
+
+            m_NextTapAt = Time.time + 0.12f;
+            var point = collision.contactCount > 0 ? collision.GetContact(0).point : transform.position;
+            FeedbackEvent.Play(FeedbackCue.PlugTap, point, Mathf.Clamp01(speed / 2f));
+        }
+
         void Update()
         {
             if (m_State == ConnectorState.Seating)

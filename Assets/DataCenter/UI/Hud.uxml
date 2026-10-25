@@ -11,6 +11,7 @@
             </ui:VisualElement>
             <ui:VisualElement class="dc-topbar__group">
                 <ui:Button name="assist-button" text="ASSIST ON" class="dc-button dc-button--active" />
+                <ui:Button name="demo-button" text="AUTO DEMO" class="dc-button" />
                 <ui:Button name="tutorial-button" text="TUTORIAL" class="dc-button" />
                 <ui:Button name="link-button" text="LINK" class="dc-button" />
                 <ui:Button name="mode-direct" text="DIRECT" class="dc-button dc-button--active" />
@@ -19,39 +20,9 @@
             </ui:VisualElement>
         </ui:VisualElement>
 
-        <!-- Top centre: link health and frame rate, with the last few seconds of each -->
-        <ui:VisualElement name="perf" class="dc-panel dc-perf" picking-mode="Ignore">
-            <ui:VisualElement class="dc-perf__metric">
-                <ui:Label text="LATENCY" class="dc-stat__label" />
-                <ui:Label name="link-latency" text="-- ms" class="dc-perf__value" />
-            </ui:VisualElement>
-            <ui:VisualElement name="latency-graph" class="dc-perf__graph dc-perf__graph--latency" />
-            <ui:VisualElement class="dc-perf__divider" />
-            <ui:VisualElement class="dc-perf__metric">
-                <ui:Label text="FRAME RATE" class="dc-stat__label" />
-                <ui:Label name="fps" text="--" class="dc-perf__value" />
-            </ui:VisualElement>
-            <ui:VisualElement name="fps-graph" class="dc-perf__graph dc-perf__graph--fps" />
-            <ui:VisualElement class="dc-perf__divider" />
-            <ui:VisualElement class="dc-perf__extra">
-                <ui:VisualElement class="dc-stat">
-                    <ui:Label text="FRAME" class="dc-stat__label" />
-                    <ui:Label name="perf-frame" text="-- ms" class="dc-stat__value" />
-                </ui:VisualElement>
-                <ui:VisualElement class="dc-stat">
-                    <ui:Label text="LOSS" class="dc-stat__label" />
-                    <ui:Label name="link-loss" text="0.0%" class="dc-stat__value" />
-                </ui:VisualElement>
-                <ui:VisualElement class="dc-stat">
-                    <ui:Label text="CMD AGE" class="dc-stat__label" />
-                    <ui:Label name="link-age" text="-- ms" class="dc-stat__value" />
-                </ui:VisualElement>
-            </ui:VisualElement>
-        </ui:VisualElement>
-
         <!-- Left: fleet -->
         <ui:VisualElement class="dc-column dc-column--left" picking-mode="Ignore">
-            <ui:VisualElement class="dc-panel">
+            <ui:VisualElement class="dc-panel dc-fleet">
                 <ui:VisualElement class="dc-panel__header">
                     <ui:Label text="ROBOTS" class="dc-panel__title" />
                     <ui:Label name="robot-count" text="0 online" class="dc-label-muted" />
@@ -122,6 +93,10 @@
                     <ui:Label name="order-status" text="ACTIVE" class="dc-chip dc-chip--accent" />
                 </ui:VisualElement>
                 <ui:Label name="order-summary" text="-" class="dc-order__summary" />
+                <ui:VisualElement name="order-cable-row" class="dc-order__cable">
+                    <ui:Label text="CABLE" class="dc-order__cable-tag" />
+                    <ui:Label name="order-cable" text="" class="dc-order__cable-text" />
+                </ui:VisualElement>
                 <ui:VisualElement class="dc-order__next">
                     <ui:Label text="NEXT" class="dc-order__next-tag" />
                     <ui:Label name="order-next" text="" class="dc-order__next-text" />
@@ -130,13 +105,18 @@
                 <ui:VisualElement name="endpoint-from" class="dc-order__endpoint">
                     <ui:VisualElement name="endpoint-from-dot" class="dc-dot" />
                     <ui:Label text="FROM" class="dc-order__endpoint-label" />
-                    <ui:Label name="endpoint-from-port" text="-" class="dc-order__endpoint-port" />
-                    <ui:Label name="endpoint-type" text="RJ45" class="dc-chip" />
+                    <ui:VisualElement class="dc-order__endpoint-text">
+                        <ui:Label name="endpoint-from-port" text="-" class="dc-order__endpoint-port" />
+                        <ui:Label name="endpoint-from-where" text="" class="dc-label-muted" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
                 <ui:VisualElement name="endpoint-to" class="dc-order__endpoint">
                     <ui:VisualElement name="endpoint-to-dot" class="dc-dot" />
                     <ui:Label text="TO" class="dc-order__endpoint-label" />
-                    <ui:Label name="endpoint-to-port" text="-" class="dc-order__endpoint-port" />
+                    <ui:VisualElement class="dc-order__endpoint-text">
+                        <ui:Label name="endpoint-to-port" text="-" class="dc-order__endpoint-port" />
+                        <ui:Label name="endpoint-to-where" text="" class="dc-label-muted" />
+                    </ui:VisualElement>
                 </ui:VisualElement>
                 <ui:VisualElement class="dc-order__stats">
                     <ui:VisualElement class="dc-order__stat">
@@ -158,8 +138,41 @@
                     </ui:VisualElement>
                     <ui:Label name="section-progress-label" text="0 / 0" />
                 </ui:VisualElement>
-                <ui:Label text="QUEUE" class="dc-panel__title dc-order__queue-title" />
-                <ui:VisualElement name="order-list" />
+            </ui:VisualElement>
+
+            <!-- Link health and frame rate, with the last few seconds of each -->
+            <ui:VisualElement name="perf" class="dc-panel dc-perf" picking-mode="Ignore">
+                <ui:VisualElement class="dc-panel__header">
+                    <ui:Label text="LINK &amp; PERFORMANCE" class="dc-panel__title" />
+                </ui:VisualElement>
+                <ui:VisualElement class="dc-perf__row">
+                    <ui:VisualElement class="dc-perf__metric">
+                        <ui:Label text="LATENCY" class="dc-stat__label" />
+                        <ui:Label name="link-latency" text="-- ms" class="dc-perf__value" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="latency-graph" class="dc-perf__graph dc-perf__graph--latency" />
+                </ui:VisualElement>
+                <ui:VisualElement class="dc-perf__row">
+                    <ui:VisualElement class="dc-perf__metric">
+                        <ui:Label text="FPS" class="dc-stat__label" />
+                        <ui:Label name="fps" text="--" class="dc-perf__value" />
+                    </ui:VisualElement>
+                    <ui:VisualElement name="fps-graph" class="dc-perf__graph dc-perf__graph--fps" />
+                </ui:VisualElement>
+                <ui:VisualElement class="dc-perf__footer">
+                    <ui:VisualElement class="dc-stat">
+                        <ui:Label text="FRAME" class="dc-stat__label" />
+                        <ui:Label name="perf-frame" text="-- ms" class="dc-stat__value" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="dc-stat">
+                        <ui:Label text="LOSS" class="dc-stat__label" />
+                        <ui:Label name="link-loss" text="0.0%" class="dc-stat__value" />
+                    </ui:VisualElement>
+                    <ui:VisualElement class="dc-stat">
+                        <ui:Label text="CMD AGE" class="dc-stat__label" />
+                        <ui:Label name="link-age" text="-- ms" class="dc-stat__value" />
+                    </ui:VisualElement>
+                </ui:VisualElement>
             </ui:VisualElement>
 
         </ui:VisualElement>

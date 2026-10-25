@@ -4,7 +4,7 @@
   "orders": [
     {
       "id": "WO-B-001",
-      "summary": "Patch B-R03 fiber panel port 5 to core line card port 5 (LC duplex)",
+      "summary": "Connect fiber panel port 5 to core switch port 5 in rack B-R03, using a fiber-optic cable.",
       "portType": "LC",
       "from": "B-R03-U30-P05",
       "to": "B-R03-U32-P05",

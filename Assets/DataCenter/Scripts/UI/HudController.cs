@@ -50,6 +50,9 @@ namespace DataCenter.UI
         [SerializeField]
         GuidanceController m_Guidance;
 
+        [SerializeField, Tooltip("Runs one job on each robot by itself, from the AUTO DEMO button.")]
+        DemoPilot m_Demo;
+
         [SerializeField, Tooltip("Console tool speed at full stick, in metres per second.")]
         float m_ConsoleToolSpeed = 0.2f;
 
@@ -77,8 +80,13 @@ namespace DataCenter.UI
         MinimapElement m_Minimap;
         Label m_OrderNext;
         VisualElement m_OrderKeys;
+        Label m_OrderCable, m_FromWhere, m_ToWhere;
         string m_KeysShown = string.Empty;
         SparklineElement m_LatencyGraph, m_FpsGraph;
+        VisualElement m_MinimapPanel, m_Perf;
+
+        // Bottom offset plus height of .dc-minimap-panel in Hud.uss, in panel units.
+        const float k_MinimapFootprint = 16f + 170f;
         bool m_HelpUserToggled;
 
         // Taller than this (panel units) and the controls panel starts folded; see OnHelpGeometryChanged.
@@ -133,6 +141,16 @@ namespace DataCenter.UI
             EventBus.Subscribe<WorkOrdersChangedEvent>(OnOrdersChanged);
             TeleopRobot.registryChanged += RebuildRobotList;
 
+            var demo = m_Root.Q<Button>("demo-button");
+            if (demo != null)
+            {
+                demo.clicked += () => m_Demo?.Toggle();
+                demo.SetEnabled(m_Demo != null);
+            }
+
+            if (m_Demo != null)
+                m_Demo.runningChanged += OnDemoChanged;
+
             if (m_Operator != null)
             {
                 m_Operator.robotSelected += OnRobotSelected;
@@ -172,6 +190,8 @@ namespace DataCenter.UI
             EventBus.Unsubscribe<ToastEvent>(OnToast);
             EventBus.Unsubscribe<WorkOrdersChangedEvent>(OnOrdersChanged);
             TeleopRobot.registryChanged -= RebuildRobotList;
+            if (m_Demo != null)
+                m_Demo.runningChanged -= OnDemoChanged;
 
             if (m_Operator != null)
             {
@@ -213,7 +233,12 @@ namespace DataCenter.UI
             m_OrderList = m_Root.Q("order-list");
             m_OrderNext = m_Root.Q<Label>("order-next");
             m_OrderKeys = m_Root.Q("order-keys");
+            m_OrderCable = m_Root.Q<Label>("order-cable");
+            m_FromWhere = m_Root.Q<Label>("endpoint-from-where");
+            m_ToWhere = m_Root.Q<Label>("endpoint-to-where");
             m_FrameTime = m_Root.Q<Label>("perf-frame");
+            m_MinimapPanel = m_Root.Q("minimap-panel");
+            m_Perf = m_Root.Q("perf");
 
             m_Deadman = m_Root.Q("deadman");
             m_DeadmanText = m_Root.Q<Label>("deadman-text");
@@ -485,21 +510,21 @@ namespace DataCenter.UI
             AddHelp(arm, "H", "hold: home");
 
             var gripper = AddHelpGroup(body, "GRIPPER");
-            AddHelp(gripper, "SHIFT", "tap: grab / let go");
+            AddHelp(gripper, "SHIFT", "tap: grab / drop");
             AddHelp(gripper, "Q E", "tilt up / down");
             AddHelp(gripper, "Z X", "roll");
 
             var view = AddHelpGroup(body, "CAMERA");
             AddHelp(view, "SHIFT+WASD", "move");
-            AddHelp(view, "R-DRAG", "look around");
+            AddHelp(view, "R-DRAG", "look");
             AddHelp(view, "SCROLL", "zoom");
             AddHelp(view, "V", "follow robot");
 
             var safety = AddHelpGroup(body, "SAFETY");
             AddHelp(safety, "BKSP", "E-Stop");
             AddHelp(safety, "SHIFT+BKSP", "reset");
-            AddHelp(safety, "1 - 4", "switch robot");
-            AddHelp(safety, "C", "hide keys");
+            AddHelp(safety, "1 - 4", "robot");
+            AddHelp(safety, "C", "hide");
         }
 
         static VisualElement AddHelpGroup(VisualElement parent, string title)
@@ -656,6 +681,30 @@ namespace DataCenter.UI
             return picked != null && picked != m_Root;
         }
 
+        /// <summary>
+        /// In a short, wide window the work order column reaches down to where the minimap sits.
+        /// The minimap then steps aside rather than covering it, and comes back when there is room.
+        /// </summary>
+        void FitMinimap()
+        {
+            if (m_MinimapPanel == null || m_Perf == null || m_Root.layout.height <= 0f)
+                return;
+
+            var minimapTop = m_Root.layout.height - k_MinimapFootprint;
+            var columnBottom = m_Perf.worldBound.yMax - m_Root.worldBound.yMin;
+            m_MinimapPanel.EnableInClassList("dc-hidden", columnBottom > minimapTop - 8f);
+        }
+
+        void OnDemoChanged(bool running)
+        {
+            var button = m_Root?.Q<Button>("demo-button");
+            if (button == null)
+                return;
+
+            button.text = running ? "STOP DEMO" : "AUTO DEMO";
+            button.EnableInClassList("dc-button--active", running);
+        }
+
         void OnModeDirect() => m_Operator?.SetMode(ControlMode.Direct);
 
         void OnModeConsole() => m_Operator?.SetMode(ControlMode.Console);
@@ -722,37 +771,39 @@ namespace DataCenter.UI
             card.root.AddToClassList("dc-robot-card");
             card.root.RegisterCallback<ClickEvent>(_ => m_Operator?.Select(robot));
 
+            // Line one: name, id and section, state.
             var top = Row();
             card.name = new Label(robot.displayName);
             card.name.AddToClassList("dc-robot-card__name");
+            card.id = new Label($"{robot.robotId} · {robot.sectionId}");
+            card.id.AddToClassList("dc-label-muted");
+            card.id.AddToClassList("dc-robot-card__id");
             card.state = new Label("IDLE");
             card.state.AddToClassList("dc-chip");
             top.Add(card.name);
+            top.Add(card.id);
             top.Add(card.state);
 
-            var middle = Row();
-            card.id = new Label($"{robot.robotId} · Section {robot.sectionId}");
-            card.id.AddToClassList("dc-label-muted");
-            middle.Add(card.id);
-
+            // Line two: battery, then what it is doing.
             var bottom = Row();
+            bottom.AddToClassList("dc-robot-card__row--detail");
             var bar = new VisualElement();
             bar.AddToClassList("dc-bar");
+            bar.AddToClassList("dc-robot-card__bar");
             card.batteryFill = new VisualElement();
             card.batteryFill.AddToClassList("dc-bar__fill");
             bar.Add(card.batteryFill);
             card.battery = new Label("--%");
             card.battery.AddToClassList("dc-robot-card__battery");
-            bottom.Add(bar);
-            bottom.Add(card.battery);
-
             card.task = new Label("Standby");
             card.task.AddToClassList("dc-label-muted");
+            card.task.AddToClassList("dc-robot-card__task");
+            bottom.Add(bar);
+            bottom.Add(card.battery);
+            bottom.Add(card.task);
 
             card.root.Add(top);
-            card.root.Add(middle);
             card.root.Add(bottom);
-            card.root.Add(card.task);
             return card;
         }
 
@@ -790,6 +841,7 @@ namespace DataCenter.UI
             UpdateRobots();
             UpdateOrders();
             m_Minimap?.Refresh(1f / Mathf.Max(1f, m_RefreshRate));
+            FitMinimap();
             UpdateProximity();
             UpdateLinkDetail();
             if (m_Tutorial != null && m_Tutorial.isRunning)
@@ -914,9 +966,9 @@ namespace DataCenter.UI
                 SetChip(m_OrderStatus, "dc-chip--accent");
                 m_OrderId.text = active.order.id;
                 m_OrderSummary.text = active.order.summary;
-                m_FromPort.text = active.order.from;
-                m_ToPort.text = active.order.to;
-                m_EndpointType.text = active.order.portType;
+                ShowEndpoints(active.order);
+                if (m_EndpointType != null)
+                    m_EndpointType.text = active.order.portType;
                 m_Elapsed.text = FormatTime(active.elapsed);
                 m_Errors.text = active.errors.ToString();
                 SetDot(m_FromDot, PortSocket.Find(active.order.from));
@@ -929,8 +981,7 @@ namespace DataCenter.UI
                 m_OrderId.text = $"SECTION {section}";
                 m_OrderSummary.text = "All work orders in this section are complete.";
                 var last = orders[orders.Count - 1];
-                m_FromPort.text = last.order.from;
-                m_ToPort.text = last.order.to;
+                ShowEndpoints(last.order);
                 m_Elapsed.text = FormatTime(last.elapsed);
                 m_Errors.text = last.errors.ToString();
                 m_FromDot.EnableInClassList("dc-dot--ok", true);
@@ -961,8 +1012,29 @@ namespace DataCenter.UI
             }
         }
 
+        /// <summary>The two ports in plain words ("Patch panel port 12", "in rack A-R03"), and what the cable is.</summary>
+        void ShowEndpoints(WorkOrder order)
+        {
+            var from = PortSocket.Find(order.from);
+            var to = PortSocket.Find(order.to);
+            m_FromPort.text = from != null ? PortLabels.Capitalise(PortLabels.Name(from)) : order.from;
+            m_ToPort.text = to != null ? PortLabels.Capitalise(PortLabels.Name(to)) : order.to;
+            if (m_FromWhere != null)
+                m_FromWhere.text = from != null ? $"in {PortLabels.Rack(from)}" : string.Empty;
+            if (m_ToWhere != null)
+                m_ToWhere.text = to != null ? $"in {PortLabels.Rack(to)}" : string.Empty;
+
+            var type = from != null ? from.type : null;
+            if (m_OrderCable != null)
+                m_OrderCable.text = type != null ? type.description : string.Empty;
+        }
+
         void RebuildOrderList(IReadOnlyList<WorkOrderProgress> orders)
         {
+            // The queue list is optional in the layout; the robot cards already show progress.
+            if (m_OrderList == null)
+                return;
+
             m_OrderList.Clear();
             for (var i = 0; i < orders.Count; i++)
             {
@@ -1039,8 +1111,10 @@ namespace DataCenter.UI
 
         /// <summary>Wires the HUD from code. Used by the scene builder.</summary>
         public void Configure(TeleopOperator teleopOperator, WorkOrderManager workOrders, FacilityMap map,
-            WristCameraFeed wristCamera, ProximityIndicator proximity, CommandGhost ghost, TutorialController tutorial, GuidanceController guidance)
+            WristCameraFeed wristCamera, ProximityIndicator proximity, CommandGhost ghost, TutorialController tutorial, GuidanceController guidance,
+            DemoPilot demo = null)
         {
+            m_Demo = demo;
             m_Guidance = guidance;
             m_Operator = teleopOperator;
             m_WorkOrders = workOrders;

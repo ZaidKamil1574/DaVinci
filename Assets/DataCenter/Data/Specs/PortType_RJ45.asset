@@ -14,6 +14,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: DataCenter.Tasks::DataCenter.Tasks.PortType
   code: RJ45
   displayName: RJ45 Copper
+  plainName: network cable
+  description: RJ45 is the standard network (Ethernet) plug, the same clip-in connector
+    as on a laptop or home router cable.
   cableColor: {r: 0.12, g: 0.42, b: 0.95, a: 1}
   cableDiameter: 0.0065
   captureRadius: 0.02

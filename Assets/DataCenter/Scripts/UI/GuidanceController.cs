@@ -137,9 +137,9 @@ namespace DataCenter.UI
             if (robot.isEStopped)
             {
                 Set(GuidanceKind.EStopped, vr
-                    ? "E-STOP latched. Let go of every control, then press X to reset."
-                    : "E-STOP latched. Let go of every key, then press SHIFT + BACKSPACE (or RESET).", null, k_Warn);
-                AddKey(vr, "SHIFT + BKSP", "reset the E-Stop");
+                    ? "The emergency stop is on. Let go of all the controls, then press X to carry on."
+                    : "The emergency stop is on. Let go of all the keys, then press Shift + Backspace (or the RESET button) to carry on.", null, k_Warn);
+                AddKey(vr, "SHIFT + BKSP", "carry on");
                 return;
             }
 
@@ -147,8 +147,8 @@ namespace DataCenter.UI
             if (active == null)
             {
                 Set(GuidanceKind.SectionComplete, vr
-                    ? $"Section {robot.sectionId} is done. Pick another robot on the wrist menu."
-                    : $"Section {robot.sectionId} is done. Press 1-4 or click another robot.", null, k_Plug);
+                    ? "Every job in this area is done. Pick another robot from the menu on your left wrist."
+                    : "Every job in this area is done. Press 1-4, or click a robot on the left, to help another one.", null, k_Plug);
                 AddKey(vr, "1 - 4", "next robot");
                 return;
             }
@@ -166,16 +166,17 @@ namespace DataCenter.UI
             // The next port is whichever end of the order is still empty, "from" first.
             var nextPort = !IsCable(from, cable) ? from : to;
             var endsDone = (IsCable(from, cable) ? 1 : 0) + (IsCable(to, cable) ? 1 : 0);
-            var typeName = from.type != null ? from.type.code : order.portType;
+            var cableName = from.type != null && !string.IsNullOrEmpty(from.type.plainName) ? from.type.plainName : $"{order.portType} cable";
+            var portName = PortLabels.Name(nextPort);
             var held = robot.gripper != null ? robot.gripper.held as CableConnector : null;
 
             if (held != null && held.cable != cable)
             {
                 Set(GuidanceKind.WrongCable, vr
-                    ? $"That is the wrong cable. Open the gripper (let go of L2) and pick up the {typeName} cable {cable.cableId}."
-                    : $"That is the wrong cable. Tap SHIFT to let go of it, then pick up the {typeName} cable {cable.cableId}.",
+                    ? $"That is not the cable this job needs. Let go of L2 to put it down, then pick up the {cableName} labelled {cable.cableId}."
+                    : $"That is not the cable this job needs. Tap Shift to put it down, then pick up the {cableName} labelled {cable.cableId}.",
                     held.transform, k_Warn);
-                AddKey(vr, "SHIFT", "tap to let go");
+                AddKey(vr, "SHIFT", "tap to put it down");
                 m_Label.text = "WRONG CABLE\n<size=70%>put it down</size>" + KeyLine(vr);
                 return;
             }
@@ -186,25 +187,26 @@ namespace DataCenter.UI
                 var step = endsDone * 2 + 2;
                 var plugText = CableConnector.insertionAssist
                     ? vr
-                        ? $"Step {step}/4: Bring the plug to {nextPort.portId}. Within a few centimetres, roughly pointing at it, it lines up and plugs in by itself."
-                        : $"Step {step}/4: Bring the plug to {nextPort.portId} with the keys shown at the marker. Within a few centimetres it lines up and plugs in by itself."
+                        ? $"Step {step} of 4: Plug it into {portName}, the port with the blinking blue light. Bring the plug close, pointing at the port, and it slides in by itself."
+                        : $"Step {step} of 4: Plug it into {portName} (blinking blue light). Bring it close with the keys below; at the chime it slides in by itself."
                     : vr
-                        ? $"Step {step}/4: Plug into {nextPort.portId}. Line the plug up with the green line (R2 + right stick to turn it), push it in, then let go of L2."
-                        : $"Step {step}/4: Plug into {nextPort.portId}. Line the plug up with the green line (Q / E to tilt it), push it in, then tap SHIFT to let go.";
+                        ? $"Step {step} of 4: Plug it into {portName}. Line the plug up with the green line (hold R2 and use the right stick to turn it), push it in, then let go of L2."
+                        : $"Step {step} of 4: Plug it into {portName}. Line the plug up with the green line (Q and E tilt it), push it in, then tap Shift to let go.";
                 Set(GuidanceKind.Plug, plugText,
                     nextPort.socket, k_Plug);
                 if (!vr)
                     AddPlugHints(robot, held, nextPort);
-                m_Label.text = $"{step} · PLUG IN\n<size=70%>{nextPort.portId}</size>" + KeyLine(vr);
+                m_Label.text = $"{step} · PLUG IN\n<size=70%>{portName}</size>" + KeyLine(vr);
                 return;
             }
 
             // Pick the end that is not already plugged in.
             var end = cable.endA.state != CableConnector.ConnectorState.Seated ? cable.endA : cable.endB;
             var pickStep = endsDone * 2 + 1;
+            var then = endsDone == 0 ? "on the cart" : "hanging from the first port";
             Set(GuidanceKind.Pick, vr
-                ? $"Step {pickStep}/4: Move the gripper over the marked end of {typeName} cable {cable.cableId} on the cart (right stick, hold it in to reach) and hold L2 to grab it."
-                : $"Step {pickStep}/4: Move the gripper to the marked end of {typeName} cable {cable.cableId} on the cart (arrow keys, R / F to reach), then tap SHIFT to grab it.",
+                ? $"Step {pickStep} of 4: Pick up the {cableName} labelled {cable.cableId} ({then}). Steer the gripper to the floating marker with the right stick (press the stick in to reach further), then hold L2 to grab it."
+                : $"Step {pickStep} of 4: Pick up the {cableName} labelled {cable.cableId} ({then}). Steer the gripper to the marker with the keys below, and tap Shift at the chime.",
                 end.transform, k_Pick);
             if (!vr)
             {
@@ -215,7 +217,7 @@ namespace DataCenter.UI
                     AddMoveHints(robot, end.transform.position);
             }
 
-            m_Label.text = $"{pickStep} · PICK UP\n<size=70%>{typeName} cable {cable.cableId}</size>" + KeyLine(vr);
+            m_Label.text = $"{pickStep} · PICK UP\n<size=70%>{cableName} {cable.cableId}</size>" + KeyLine(vr);
         }
 
         void AddKey(bool vr, string key, string action)
@@ -244,9 +246,9 @@ namespace DataCenter.UI
             var depth = Vector3.Dot(offset, reach);
 
             m_Moves.Clear();
-            m_Moves.Add((Mathf.Abs(up), up > 0f ? "UP" : "DOWN", Centimetres(up)));
-            m_Moves.Add((Mathf.Abs(side), side > 0f ? "RIGHT" : "LEFT", Centimetres(side)));
-            m_Moves.Add((Mathf.Abs(depth), depth > 0f ? "R" : "F", (depth > 0f ? "reach " : "back ") + Centimetres(depth)));
+            m_Moves.Add((Mathf.Abs(up), up > 0f ? "UP" : "DOWN", (up > 0f ? "raise " : "lower ") + Centimetres(up)));
+            m_Moves.Add((Mathf.Abs(side), side > 0f ? "RIGHT" : "LEFT", (side > 0f ? "right " : "left ") + Centimetres(side)));
+            m_Moves.Add((Mathf.Abs(depth), depth > 0f ? "R" : "F", (depth > 0f ? "reach out " : "pull back ") + Centimetres(depth)));
             m_Moves.Sort((a, b) => b.distance.CompareTo(a.distance));
 
             for (var i = 0; i < m_Moves.Count && m_Keys.Count < k_MaxMoveHints; i++)
@@ -274,7 +276,7 @@ namespace DataCenter.UI
             if (Mathf.Abs(turn) > 35f)
                 m_Keys.Add(new KeyHint(turn > 0f ? "D" : "A", turn > 0f ? "turn right" : "turn left"));
             else
-                m_Keys.Add(new KeyHint("W", $"drive {shortfall:0.0} m closer"));
+                m_Keys.Add(new KeyHint("W", $"drive {shortfall:0.0} m closer (out of reach)"));
             return true;
         }
 
@@ -313,7 +315,7 @@ namespace DataCenter.UI
             }
 
             if (!CableConnector.insertionAssist)
-                m_Keys.Add(new KeyHint("SHIFT", "tap to let go and seat it"));
+                m_Keys.Add(new KeyHint("SHIFT", "tap to let go and plug it in"));
         }
 
         static string Centimetres(float metres) => $"{Mathf.Abs(metres) * 100f:0} cm";

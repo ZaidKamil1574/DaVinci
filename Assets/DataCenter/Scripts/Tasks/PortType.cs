@@ -15,6 +15,13 @@ namespace DataCenter.Tasks
         [Tooltip("Name shown to the operator.")]
         public string displayName = "RJ45 Copper";
 
+        [Tooltip("Everyday name for the cable, for instructions, for example \"network cable\".")]
+        public string plainName = "network cable";
+
+        [Tooltip("One sentence explaining the connector to someone who has never seen one.")]
+        [TextArea]
+        public string description = "RJ45 is the standard network (Ethernet) plug, the same clip-in connector as on a laptop or home router cable.";
+
         [Tooltip("Cable jacket colour.")]
         public Color cableColor = new Color(0.15f, 0.45f, 0.95f);
 

@@ -4,7 +4,7 @@
   "orders": [
     {
       "id": "WO-C-001",
-      "summary": "Power C-R02 server U24 PSU 1 from PDU-A outlet 3 (C13/C14)",
+      "summary": "Plug the server's power supply into outlet 3 of the power strip in rack C-R02.",
       "portType": "C13",
       "from": "C-R02-U20-P03",
       "to": "C-R02-U24-P01",

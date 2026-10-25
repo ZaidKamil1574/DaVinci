@@ -9,8 +9,17 @@ namespace DataCenter.Robotics
     /// a velocity cancels any path.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Sideways travel is what makes lining up with a rack practical: the robot can slide along the
     /// aisle while still facing the equipment, instead of turning away and back.
+    /// </para>
+    /// <para>
+    /// Driven moves are also swept against equipment before they happen: the base footprint and
+    /// the arm's tool tip, which travels with the base. A move into a rack, wall or cart stops at
+    /// the surface and slides along it, and a turn that would swing into one does not happen. The
+    /// NavMesh alone keeps the base's centre off rack footprints, but not its corners or an arm
+    /// held out in front.
+    /// </para>
     /// </remarks>
     [RequireComponent(typeof(NavMeshAgent))]
     public class MobileBase : MonoBehaviour
@@ -20,6 +29,26 @@ namespace DataCenter.Robotics
 
         [SerializeField, Tooltip("Wheel radius for the visual spin, in metres.")]
         float m_WheelRadius = 0.08f;
+
+        [SerializeField, Tooltip("Layers the base and arm cannot be driven into: racks, walls, carts. Defaults to Equipment.")]
+        LayerMask m_BlockingLayers;
+
+        [SerializeField, Tooltip("Clearance kept around the base footprint, in metres.")]
+        float m_Clearance = 0.03f;
+
+        // Gap left at a contact so the next sweep does not start touching, and the tool tip's size.
+        const float k_Skin = 0.005f;
+        const float k_ToolRadius = 0.03f;
+        const float k_BumpInterval = 0.6f;
+        const float k_ToastInterval = 4f;
+
+        static readonly Collider[] s_Before = new Collider[16];
+        static readonly Collider[] s_After = new Collider[16];
+
+        BoxCollider m_Footprint;
+        ArmIKController m_Arm;
+        float m_NextBumpAt;
+        float m_NextToastAt;
 
         NavMeshAgent m_Agent;
         Vector2 m_DriveTarget;
@@ -38,6 +67,9 @@ namespace DataCenter.Robotics
         /// <summary>Whether the base is moving, by either control.</summary>
         public bool isMoving => speed > 0.02f || Mathf.Abs(m_Angular) > 1f || isNavigating;
 
+        /// <summary>Whether the last driven step was stopped or turned aside by equipment.</summary>
+        public bool blocked { get; private set; }
+
         /// <summary>The current navigation destination, if any.</summary>
         public Vector3 destination => m_Agent != null ? m_Agent.destination : transform.position;
 
@@ -47,6 +79,10 @@ namespace DataCenter.Robotics
             m_Agent.updateRotation = true;
             m_Agent.autoBraking = true;
             m_LastPosition = transform.position;
+            m_Footprint = GetComponent<BoxCollider>();
+            m_Arm = GetComponent<ArmIKController>();
+            if (m_BlockingLayers.value == 0)
+                m_BlockingLayers = LayerMask.GetMask("Equipment");
         }
 
         /// <summary>Sets the drive command. x is turn, y is forward, each -1 to 1.</summary>
@@ -111,12 +147,40 @@ namespace DataCenter.Robotics
                 m_Lateral = Mathf.MoveTowards(m_Lateral, planar.x, spec.linearAcceleration * deltaTime);
                 m_Angular = Mathf.MoveTowards(m_Angular, m_DriveTarget.x * maxAngular, maxAngular * 4f * deltaTime);
 
+                blocked = false;
                 if (Mathf.Abs(m_Angular) > 0.01f)
-                    transform.Rotate(0f, m_Angular * deltaTime, 0f, Space.World);
+                {
+                    var turn = Quaternion.Euler(0f, m_Angular * deltaTime, 0f);
+                    if (CanTurn(turn, out var contact, out var obstacle))
+                    {
+                        transform.rotation = turn * transform.rotation;
+                    }
+                    else
+                    {
+                        m_Angular = 0f;
+                        Bump(contact, obstacle);
+                    }
+                }
 
-                var step = transform.forward * m_Linear + transform.right * m_Lateral;
-                if (step.sqrMagnitude > 1e-8f)
-                    m_Agent.Move(step * deltaTime);
+                var step = (transform.forward * m_Linear + transform.right * m_Lateral) * deltaTime;
+                if (step.sqrMagnitude > 1e-10f)
+                {
+                    var allowed = Sweep(step, out var hit);
+                    if (hit.collider != null)
+                    {
+                        // Shed the speed going into the obstacle and keep the part along it, so
+                        // pushing at a rack does not build up and lurch when the way clears.
+                        var normal = Vector3.ProjectOnPlane(hit.normal, Vector3.up).normalized;
+                        var velocity = transform.forward * m_Linear + transform.right * m_Lateral;
+                        velocity -= normal * Mathf.Min(0f, Vector3.Dot(velocity, normal));
+                        m_Linear = Vector3.Dot(velocity, transform.forward);
+                        m_Lateral = Vector3.Dot(velocity, transform.right);
+                        Bump(hit.point, hit.collider);
+                    }
+
+                    if (allowed.sqrMagnitude > 1e-10f)
+                        m_Agent.Move(allowed);
+                }
             }
             else
             {
@@ -138,6 +202,134 @@ namespace DataCenter.Robotics
                     if (m_Wheels[i] != null)
                         m_Wheels[i].Rotate(spin, 0f, 0f, Space.Self);
                 }
+            }
+        }
+
+        /// <summary>
+        /// How much of <paramref name="step"/> the base can make: up to the first contact, then
+        /// sliding along the surface with the rest. <paramref name="hit"/> is that contact, if any.
+        /// </summary>
+        Vector3 Sweep(Vector3 step, out RaycastHit hit)
+        {
+            var distance = step.magnitude;
+            var direction = step / distance;
+            if (!Cast(Vector3.zero, direction, distance + k_Skin, out hit))
+                return step;
+
+            var travel = direction * Mathf.Max(0f, hit.distance - k_Skin);
+            var normal = Vector3.ProjectOnPlane(hit.normal, Vector3.up);
+            if (normal.sqrMagnitude < 1e-6f)
+                return travel;
+
+            var slide = Vector3.ProjectOnPlane(step - travel, normal.normalized);
+            var slideDistance = slide.magnitude;
+            if (slideDistance < 1e-5f)
+                return travel;
+
+            if (Cast(travel, slide / slideDistance, slideDistance + k_Skin, out var second))
+                slide = slide / slideDistance * Mathf.Max(0f, second.distance - k_Skin);
+            return travel + slide;
+        }
+
+        /// <summary>Casts the footprint and the tool tip from their current place plus <paramref name="offset"/>.</summary>
+        bool Cast(Vector3 offset, Vector3 direction, float distance, out RaycastHit nearest)
+        {
+            nearest = default;
+            var found = false;
+
+            if (m_Footprint != null)
+            {
+                var centre = transform.TransformPoint(m_Footprint.center) + offset;
+                if (Physics.BoxCast(centre, FootprintHalfExtents(), direction, out var hit, transform.rotation, distance, m_BlockingLayers, QueryTriggerInteraction.Ignore))
+                {
+                    nearest = hit;
+                    found = true;
+                }
+            }
+
+            var tip = m_Arm != null ? m_Arm.toolTip : null;
+            if (tip != null && Physics.SphereCast(tip.position + offset, k_ToolRadius, direction, out var tipHit, distance, m_BlockingLayers, QueryTriggerInteraction.Ignore)
+                && (!found || tipHit.distance < nearest.distance))
+            {
+                nearest = tipHit;
+                found = true;
+            }
+
+            return found;
+        }
+
+        /// <summary>
+        /// Whether turning by <paramref name="turn"/> keeps the base and the tool clear. Anything the
+        /// base already touches is ignored, so a robot parked against a cart can still turn away.
+        /// </summary>
+        bool CanTurn(Quaternion turn, out Vector3 contact, out Collider obstacle)
+        {
+            contact = transform.position;
+            obstacle = null;
+            var pivot = transform.position;
+
+            if (m_Footprint != null)
+            {
+                var centre = transform.TransformPoint(m_Footprint.center);
+                var half = FootprintHalfExtents();
+                var after = Physics.OverlapBoxNonAlloc(pivot + turn * (centre - pivot), half, s_After, turn * transform.rotation, m_BlockingLayers, QueryTriggerInteraction.Ignore);
+                if (after > 0)
+                {
+                    var before = Physics.OverlapBoxNonAlloc(centre, half, s_Before, transform.rotation, m_BlockingLayers, QueryTriggerInteraction.Ignore);
+                    for (var i = 0; i < after; i++)
+                    {
+                        if (System.Array.IndexOf(s_Before, s_After[i], 0, before) < 0)
+                        {
+                            contact = s_After[i].ClosestPoint(centre);
+                            obstacle = s_After[i];
+                            return false;
+                        }
+                    }
+                }
+            }
+
+            var tip = m_Arm != null ? m_Arm.toolTip : null;
+            if (tip != null)
+            {
+                var from = tip.position;
+                var swing = pivot + turn * (from - pivot) - from;
+                var distance = swing.magnitude;
+                if (distance > 1e-5f && Physics.SphereCast(from, k_ToolRadius, swing / distance, out var hit, distance, m_BlockingLayers, QueryTriggerInteraction.Ignore))
+                {
+                    contact = hit.point;
+                    obstacle = hit.collider;
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        Vector3 FootprintHalfExtents()
+        {
+            var half = Vector3.Scale(m_Footprint.size * 0.5f, transform.lossyScale);
+            // Clearance around the sides; the bottom stays a little off the floor and plinths.
+            return new Vector3(half.x + m_Clearance, Mathf.Max(0.05f, half.y - 0.03f), half.z + m_Clearance);
+        }
+
+        /// <summary>
+        /// Feedback for a blocked move: the sound of whatever it hit (a buzz too in VR), louder the
+        /// faster it was going, and now and then a note on screen.
+        /// </summary>
+        void Bump(Vector3 point, Collider obstacle)
+        {
+            blocked = true;
+            if (Time.time >= m_NextBumpAt)
+            {
+                m_NextBumpAt = Time.time + k_BumpInterval;
+                var impact = Mathf.Clamp01(0.35f + speed / 0.6f);
+                FeedbackEvent.Play(FeedbackEvent.ImpactCue(obstacle), point, impact);
+            }
+
+            if (Time.time >= m_NextToastAt)
+            {
+                m_NextToastAt = Time.time + k_ToastInterval;
+                ToastEvent.Show("Blocked: the robot cannot drive through equipment", ToastLevel.Warning);
             }
         }
 
