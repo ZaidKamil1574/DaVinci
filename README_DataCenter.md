@@ -29,6 +29,9 @@ own scene, own assemblies, own build path.
 
 ### On the Quest (standalone APK)
 
+First time on a Quest (developer mode, cable, Unity's Android module)? Follow the step-by-step
+guide in [README.md](README.md#build-it-for-a-meta-quest-headset).
+
 **Tools > Data Center > Platforms > Build Quest APK** writes `Builds/Quest/DataCenterTeleop.apk`.
 Install with:
 
