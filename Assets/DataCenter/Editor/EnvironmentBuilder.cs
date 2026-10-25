@@ -119,6 +119,10 @@ namespace DataCenter.Editor
             var slab = Box(name, parent, new Vector3(area.center.x, -0.05f, area.center.y), new Vector3(area.width, 0.1f, area.height), material, true);
             slab.layer = layer;
 
+            // The VR operator can teleport anywhere on the floor with the right stick.
+            var teleport = slab.AddComponent<UnityEngine.XR.Interaction.Toolkit.Locomotion.Teleportation.TeleportationArea>();
+            teleport.interactionLayers = UnityEngine.XR.Interaction.Toolkit.InteractionLayerMask.GetMask("Teleport");
+
             // One texture repeat per 0.6 m tile. Box UVs span each face, so scale the material per slab.
             var renderer = slab.GetComponent<MeshRenderer>();
             var instance = new Material(material) { name = $"{material.name}_{name}" };

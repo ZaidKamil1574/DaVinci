@@ -368,6 +368,7 @@ namespace DataCenter.Teleop
 
             var drive = MakeCommand(CommandType.BaseVelocity, true);
             drive.velocity = Vector2.ClampMagnitude(m_Intent.baseDrive + (m_Mode == ControlMode.Console ? consoleDrive : Vector2.zero), 1.4142f);
+            drive.strafe = Mathf.Clamp(m_Intent.baseStrafe, -1f, 1f);
             Send(drive);
 
             var grip = MakeCommand(CommandType.Gripper, true);

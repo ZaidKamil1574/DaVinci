@@ -282,18 +282,48 @@ namespace DataCenter.Editor
                 PrefabUtility.RecordPrefabInstancePropertyModifications(xrCamera);
             }
 
-            // The operator stands still while the robot moves. Locomotion and teleport would steal the
-            // thumbsticks that drive the base and the wrist.
+            // Locomotion: the right stick keeps the rig's own teleport (push forward, release) and snap
+            // turn. The left stick belongs to the robot, so walking, grab-move, climbing, jumping and
+            // gravity are switched off, as is the left hand's teleport ray.
+            var disabledProviders = new[] { "Move", "Grab Move", "Climb", "Climb Teleport", "Jump", "Gravity" };
             foreach (var t in instance.GetComponentsInChildren<Transform>(true))
             {
-                if (t.name == "Locomotion" || t.name.Contains("Teleport Interactor") || t.name == "Teleport Stabilized Origin")
+                var underLocomotion = t.parent != null && t.parent.name == "Locomotion";
+                var leftTeleport = t.name.Contains("Teleport Interactor") && IsUnder(t, "Left Controller");
+                if ((underLocomotion && System.Array.IndexOf(disabledProviders, t.name) >= 0) || leftTeleport)
                 {
                     t.gameObject.SetActive(false);
                     PrefabUtility.RecordPrefabInstancePropertyModifications(t.gameObject);
                 }
             }
 
+            // Left hand: "smooth motion" mode keeps the left stick out of teleport mode (with the move
+            // provider off it then does nothing for the rig). Right hand: teleport plus snap turn.
+            foreach (var manager in instance.GetComponentsInChildren<MonoBehaviour>(true))
+            {
+                if (manager == null || manager.GetType().Name != "ControllerInputActionManager")
+                    continue;
+
+                var serialized = new SerializedObject(manager);
+                var left = IsUnder(manager.transform, "Left Controller");
+                serialized.FindProperty("m_SmoothMotionEnabled").boolValue = left;
+                serialized.FindProperty("m_SmoothTurnEnabled").boolValue = false;
+                serialized.ApplyModifiedPropertiesWithoutUndo();
+                PrefabUtility.RecordPrefabInstancePropertyModifications(manager);
+            }
+
             return origin;
+        }
+
+        static bool IsUnder(Transform t, string ancestorName)
+        {
+            for (var p = t; p != null; p = p.parent)
+            {
+                if (p.name == ancestorName)
+                    return true;
+            }
+
+            return false;
         }
 
         static void BuildHud(TeleopOperator teleopOperator, WorkOrderManager workOrders, FacilityMap map,

@@ -90,7 +90,6 @@ namespace DataCenter.UI
                 if (m_Current != null)
                 {
                     m_Current.enabled = false;
-                    m_Current.stereoTargetEye = StereoTargetEyeMask.None;
                     m_Current.targetTexture = m_Texture;
                     m_NextRender = 0f;
                 }

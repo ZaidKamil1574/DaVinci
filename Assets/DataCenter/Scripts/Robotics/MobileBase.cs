@@ -4,9 +4,14 @@ using UnityEngine.AI;
 namespace DataCenter.Robotics
 {
     /// <summary>
-    /// Differential-drive mobile base on a NavMesh. Accepts either a velocity (joystick / WASD) or
-    /// a destination (point and click); a velocity cancels any path.
+    /// Omnidirectional (mecanum-style) mobile base on a NavMesh. Accepts either a velocity
+    /// (joystick / WASD), which may include sideways motion, or a destination (point and click);
+    /// a velocity cancels any path.
     /// </summary>
+    /// <remarks>
+    /// Sideways travel is what makes lining up with a rack practical: the robot can slide along the
+    /// aisle while still facing the equipment, instead of turning away and back.
+    /// </remarks>
     [RequireComponent(typeof(NavMeshAgent))]
     public class MobileBase : MonoBehaviour
     {
@@ -18,7 +23,9 @@ namespace DataCenter.Robotics
 
         NavMeshAgent m_Agent;
         Vector2 m_DriveTarget;
+        float m_StrafeTarget;
         float m_Linear;
+        float m_Lateral;
         float m_Angular;
         Vector3 m_LastPosition;
 
@@ -43,10 +50,12 @@ namespace DataCenter.Robotics
         }
 
         /// <summary>Sets the drive command. x is turn, y is forward, each -1 to 1.</summary>
-        public void SetDrive(Vector2 drive)
+        public void SetDrive(Vector2 drive, float strafe = 0f)
         {
             m_DriveTarget = Vector2.ClampMagnitude(drive, 1.4142f);
-            if (m_DriveTarget.sqrMagnitude > 0.0001f && m_Agent.isOnNavMesh && m_Agent.hasPath)
+            m_StrafeTarget = Mathf.Clamp(strafe, -1f, 1f);
+            var commanding = m_DriveTarget.sqrMagnitude > 0.0001f || Mathf.Abs(m_StrafeTarget) > 0.01f;
+            if (commanding && m_Agent.isOnNavMesh && m_Agent.hasPath)
                 m_Agent.ResetPath();
         }
 
@@ -67,7 +76,9 @@ namespace DataCenter.Robotics
         public void Stop()
         {
             m_DriveTarget = Vector2.zero;
+            m_StrafeTarget = 0f;
             m_Linear = 0f;
+            m_Lateral = 0f;
             m_Angular = 0f;
             if (m_Agent != null && m_Agent.isOnNavMesh)
             {
@@ -94,18 +105,23 @@ namespace DataCenter.Robotics
             if (!isNavigating)
             {
                 // Ramp toward the commanded velocity rather than stepping to it.
-                m_Linear = Mathf.MoveTowards(m_Linear, m_DriveTarget.y * maxLinear, spec.linearAcceleration * deltaTime);
+                // Forward and sideways share one speed limit, so a diagonal is no faster than straight.
+                var planar = Vector2.ClampMagnitude(new Vector2(m_StrafeTarget, m_DriveTarget.y), 1f) * maxLinear;
+                m_Linear = Mathf.MoveTowards(m_Linear, planar.y, spec.linearAcceleration * deltaTime);
+                m_Lateral = Mathf.MoveTowards(m_Lateral, planar.x, spec.linearAcceleration * deltaTime);
                 m_Angular = Mathf.MoveTowards(m_Angular, m_DriveTarget.x * maxAngular, maxAngular * 4f * deltaTime);
 
                 if (Mathf.Abs(m_Angular) > 0.01f)
                     transform.Rotate(0f, m_Angular * deltaTime, 0f, Space.World);
 
-                if (Mathf.Abs(m_Linear) > 0.0001f)
-                    m_Agent.Move(transform.forward * (m_Linear * deltaTime));
+                var step = transform.forward * m_Linear + transform.right * m_Lateral;
+                if (step.sqrMagnitude > 1e-8f)
+                    m_Agent.Move(step * deltaTime);
             }
             else
             {
                 m_Linear = 0f;
+                m_Lateral = 0f;
                 m_Angular = 0f;
             }
 

@@ -12,7 +12,10 @@ namespace DataCenter
         /// <summary>Move the tool to <see cref="TeleopCommand.position"/> / <see cref="TeleopCommand.rotation"/>, in the robot's base frame.</summary>
         ArmTarget,
 
-        /// <summary>Drive the base at <see cref="TeleopCommand.velocity"/>: x is turn, y is forward, each -1 to 1.</summary>
+        /// <summary>
+        /// Drive the base at <see cref="TeleopCommand.velocity"/> (x is turn, y is forward) and
+        /// <see cref="TeleopCommand.strafe"/> (sideways), each -1 to 1.
+        /// </summary>
         BaseVelocity,
 
         /// <summary>Navigate the base to the world point <see cref="TeleopCommand.position"/>.</summary>
@@ -64,6 +67,9 @@ namespace DataCenter
         public Vector3 position;
         public Quaternion rotation;
         public Vector2 velocity;
+
+        /// <summary>BaseVelocity: sideways speed for an omnidirectional base, -1 (left) to 1 (right).</summary>
+        public float strafe;
         public float value;
 
         public string ToJson() => JsonUtility.ToJson(this);

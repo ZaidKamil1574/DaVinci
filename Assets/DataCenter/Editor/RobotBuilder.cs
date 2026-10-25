@@ -125,7 +125,6 @@ namespace DataCenter.Editor
             wristCamera.farClipPlane = 8f;
             wristCamera.enabled = false;
             wristCamera.tag = "Untagged";
-            wristCamera.stereoTargetEye = StereoTargetEyeMask.None;
 
             // ---------- Components
             var agent = root.AddComponent<NavMeshAgent>();

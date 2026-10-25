@@ -27,6 +27,9 @@ namespace DataCenter.Teleop
         /// <summary>Base drive: x is turn, y is forward, each -1 to 1.</summary>
         public Vector2 baseDrive;
 
+        /// <summary>Base sideways drive in the robot's frame, -1 (left) to 1 (right).</summary>
+        public float baseStrafe;
+
         /// <summary>Whether <see cref="armPose"/> carries an absolute tool target, from a grab or drag.</summary>
         public bool hasArmPose;
 

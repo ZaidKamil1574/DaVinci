@@ -31,6 +31,7 @@ namespace DataCenter.Tests
             {
                 intent.deadman |= next.deadman;
                 intent.baseDrive += next.baseDrive;
+                intent.baseStrafe += next.baseStrafe;
                 if (next.hasArmPose)
                 {
                     intent.hasArmPose = true;
@@ -187,6 +188,23 @@ namespace DataCenter.Tests
             m_Input.next.deadman = true;
             yield return new WaitForSeconds(1.3f);
             Assert.That(tutorial.step, Is.EqualTo(TutorialController.Step.Grab), "Holding the deadman did not pass step 1");
+        }
+
+        [UnityTest]
+        public IEnumerator BaseDrivesSidewaysWithoutTurning()
+        {
+            var start = m_Robot.transform.position;
+            var yaw = m_Robot.transform.eulerAngles.y;
+            m_Input.next.deadman = true;
+            m_Input.next.baseStrafe = 1f;
+            yield return new WaitForSeconds(0.8f);
+
+            var moved = m_Robot.transform.position - start;
+            var sideways = Vector3.Dot(moved, m_Robot.transform.right);
+            var forward = Vector3.Dot(moved, m_Robot.transform.forward);
+            Assert.That(sideways, Is.GreaterThan(0.1f), $"Did not slide right: {sideways * 100f:0.0} cm");
+            Assert.That(Mathf.Abs(forward), Is.LessThan(0.02f), "Sideways command also moved it forward or back");
+            Assert.That(Mathf.Abs(Mathf.DeltaAngle(yaw, m_Robot.transform.eulerAngles.y)), Is.LessThan(0.5f), "Sideways command turned the robot");
         }
 
         [UnityTest]

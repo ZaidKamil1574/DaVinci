@@ -211,7 +211,7 @@ namespace DataCenter.Robotics
                     break;
                 case CommandType.BaseVelocity:
                     if (m_Base != null)
-                        m_Base.SetDrive(command.velocity);
+                        m_Base.SetDrive(command.velocity, command.strafe);
                     break;
                 case CommandType.BaseGoal:
                     if (m_Base != null && m_Base.SetDestination(command.position))
