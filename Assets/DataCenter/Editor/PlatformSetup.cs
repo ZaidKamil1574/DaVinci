@@ -100,7 +100,11 @@ namespace DataCenter.Editor
         public static void BuildWebGL() => BuildIsolated(BuildTarget.WebGL, WebGLOutput, ConfigureWebXR);
 
         [MenuItem("Tools/Data Center/Platforms/Build Quest APK", false, 211)]
-        public static void BuildQuest() => BuildIsolated(BuildTarget.Android, QuestOutput, LogQuestXRSetup);
+        public static void BuildQuest() => BuildIsolated(BuildTarget.Android, QuestOutput, LogQuestXRSetup, BuildOptions.CleanBuildCache);
+
+        // Quest builds always clean the build cache. Android builds are incremental through a
+        // Gradle project in Library/Bee, and a build of another scene (the Da Vinci scene from the
+        // Build Profiles window) can leave its data there to be packaged into this APK as well.
 
         /// <summary>
         /// Builds the data center scene for Quest and installs and launches it on the headset
@@ -117,7 +121,7 @@ namespace DataCenter.Editor
             }
 
             if (UnityEditor.SceneManagement.EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
-                BuildIsolated(BuildTarget.Android, QuestOutput, LogQuestXRSetup, BuildOptions.AutoRunPlayer);
+                BuildIsolated(BuildTarget.Android, QuestOutput, LogQuestXRSetup, BuildOptions.AutoRunPlayer | BuildOptions.CleanBuildCache);
         }
 
         static bool Build(BuildTarget target, string output, BuildOptions extra = BuildOptions.None)
@@ -156,7 +160,7 @@ namespace DataCenter.Editor
 
         /// <summary>Batch entry: build the Quest APK. See <see cref="BuildIsolated"/>.</summary>
         public static void BuildQuestBatch() =>
-            EditorApplication.Exit(BuildIsolated(BuildTarget.Android, QuestOutput, LogQuestXRSetup) ? 0 : 1);
+            EditorApplication.Exit(BuildIsolated(BuildTarget.Android, QuestOutput, LogQuestXRSetup, BuildOptions.CleanBuildCache) ? 0 : 1);
 
         /// <summary>
         /// Builds the data center scene without leaving any trace on the project the Da Vinci app
