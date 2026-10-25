@@ -34,7 +34,7 @@ namespace DataCenter.Teleop
 
         Transform m_Target;
         float m_Yaw;
-        float m_Pitch = 22f;
+        float m_Pitch = 16f;
         Vector3 m_Focus;
         bool m_Initialised;
 
@@ -47,9 +47,10 @@ namespace DataCenter.Teleop
             if (target == null)
                 return;
 
-            // Behind and to the right of the robot, looking along its forward at what it is working on.
+            // Behind and to the right of the robot, looking along its forward at what it is working on,
+            // low enough to stay under the overhead cable trays (2.45 m).
             m_Yaw = target.eulerAngles.y + 160f;
-            m_Pitch = 24f;
+            m_Pitch = 16f;
             if (snap || !m_Initialised)
             {
                 m_Focus = target.position + Vector3.up * m_FocusHeight;

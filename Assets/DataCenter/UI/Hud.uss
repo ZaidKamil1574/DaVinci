@@ -481,7 +481,7 @@
 /* ---------- Wrist camera ---------- */
 
 .dc-wristcam__view {
-    height: 160px;
+    height: 120px;
     border-radius: var(--dc-radius-1);
     background-color: var(--dc-surface-sunken);
     -unity-background-scale-mode: scale-and-crop;

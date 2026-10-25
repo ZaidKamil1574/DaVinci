@@ -97,12 +97,30 @@ namespace DataCenter.Editor
         }
 
         [MenuItem("Tools/Data Center/Platforms/Build WebGL (WebXR)", false, 210)]
-        public static void BuildWebGL() => Build(BuildTarget.WebGL, WebGLOutput);
+        public static void BuildWebGL() => BuildIsolated(BuildTarget.WebGL, WebGLOutput, ConfigureWebXR);
 
         [MenuItem("Tools/Data Center/Platforms/Build Quest APK", false, 211)]
-        public static void BuildQuest() => Build(BuildTarget.Android, QuestOutput);
+        public static void BuildQuest() => BuildIsolated(BuildTarget.Android, QuestOutput, LogQuestXRSetup);
 
-        static bool Build(BuildTarget target, string output)
+        /// <summary>
+        /// Builds the data center scene for Quest and installs and launches it on the headset
+        /// connected over USB. Unlike the Build Profiles window's Build And Run, this builds the
+        /// data center scene rather than the project's scene list, under its own app id.
+        /// </summary>
+        [MenuItem("Tools/Data Center/Platforms/Build And Run on Quest", false, 212)]
+        public static void BuildAndRunQuest()
+        {
+            if (EditorUserBuildSettings.activeBuildTarget != BuildTarget.Android)
+            {
+                EditorUtility.DisplayDialog("Build And Run on Quest", "Switch the active platform to Android first (File > Build Profiles > Android > Switch Platform).", "OK");
+                return;
+            }
+
+            if (UnityEditor.SceneManagement.EditorSceneManager.SaveCurrentModifiedScenesIfUserWantsTo())
+                BuildIsolated(BuildTarget.Android, QuestOutput, LogQuestXRSetup, BuildOptions.AutoRunPlayer);
+        }
+
+        static bool Build(BuildTarget target, string output, BuildOptions extra = BuildOptions.None)
         {
             var options = new BuildPlayerOptions
             {
@@ -110,7 +128,7 @@ namespace DataCenter.Editor
                 locationPathName = output,
                 target = target,
                 targetGroup = BuildPipeline.GetBuildTargetGroup(target),
-                options = BuildOptions.None,
+                options = extra,
             };
 
             var report = BuildPipeline.BuildPlayer(options);
@@ -147,7 +165,7 @@ namespace DataCenter.Editor
         /// it restores those, the preloaded assets that XR build processors add and remove, and the
         /// active build target.
         /// </summary>
-        static bool BuildIsolated(BuildTarget target, string output, System.Action configure)
+        static bool BuildIsolated(BuildTarget target, string output, System.Action configure, BuildOptions extra = BuildOptions.None)
         {
             var group = BuildPipeline.GetBuildTargetGroup(target);
             var named = NamedBuildTarget.FromBuildTargetGroup(group);
@@ -168,7 +186,7 @@ namespace DataCenter.Editor
                 PlayerSettings.productName = ProductName;
                 PlayerSettings.SetApplicationIdentifier(named, ApplicationId);
                 configure?.Invoke();
-                ok = Build(target, output);
+                ok = Build(target, output, extra);
             }
             catch (System.Exception e)
             {
