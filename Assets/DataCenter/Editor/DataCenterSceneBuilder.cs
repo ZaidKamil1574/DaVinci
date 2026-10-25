@@ -297,6 +297,18 @@ namespace DataCenter.Editor
                 }
             }
 
+            // The teleport arc passes through the robot, cables, ports and the grab handle, so the
+            // operator can land right beside the robot. Racks and walls still block it.
+            var teleportMask = ~BuilderAssets.Mask(BuilderAssets.RobotLayer, BuilderAssets.CableLayer, BuilderAssets.PortLayer, BuilderAssets.HandleLayer);
+            foreach (var ray in instance.GetComponentsInChildren<UnityEngine.XR.Interaction.Toolkit.Interactors.XRRayInteractor>(true))
+            {
+                if (!ray.name.Contains("Teleport"))
+                    continue;
+
+                ray.raycastMask = teleportMask;
+                PrefabUtility.RecordPrefabInstancePropertyModifications(ray);
+            }
+
             // Left hand: "smooth motion" mode keeps the left stick out of teleport mode (with the move
             // provider off it then does nothing for the rig). Right hand: teleport plus snap turn.
             foreach (var manager in instance.GetComponentsInChildren<MonoBehaviour>(true))

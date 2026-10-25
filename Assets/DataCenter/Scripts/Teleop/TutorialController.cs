@@ -86,7 +86,7 @@ namespace DataCenter.Teleop
                     case Step.EStop:
                         return vr ? "Hit the E-STOP: Y on the left controller, or the red button." : "Hit the E-STOP: BACKSPACE, or the red button.";
                     case Step.Reset:
-                        return vr ? "Let go of the grip, then hold X for one second to reset." : "Let go of SPACE, then press SHIFT + BACKSPACE to reset.";
+                        return vr ? "Let go of the grip and sticks, then press X to reset." : "Let go of SPACE, then press SHIFT + BACKSPACE to reset.";
                     case Step.Done:
                         return $"Tutorial complete in {Mathf.FloorToInt(elapsed)}s. You are cleared to operate.";
                     default:

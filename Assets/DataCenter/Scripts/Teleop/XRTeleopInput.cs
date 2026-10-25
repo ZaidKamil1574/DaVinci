@@ -8,12 +8,14 @@ namespace DataCenter.Teleop
     /// </summary>
     /// <remarks>
     /// <list type="bullet">
-    /// <item><b>Either grip</b>: deadman. Gripping the target handle also grabs it, so one squeeze both enables and steers.</item>
+    /// <item><b>Either grip</b>: deadman for the arm. Gripping the target handle also grabs it, so one squeeze both enables and steers.</item>
+    /// <item>Base controls are hold-to-run: deflecting the left stick or holding A / B enables motion by
+    /// itself, and letting go stops the robot. A separate grip on top made driving two-handed work.</item>
     /// <item><b>Right trigger</b>: close the gripper while held, open on release.</item>
     /// <item><b>Left stick</b>: move the base, including sideways. Directions follow where you are looking, not where the robot faces.</item>
     /// <item><b>A</b> / <b>B</b>: rotate the base clockwise / anticlockwise while held.</item>
     /// <item><b>Left stick click</b>: home the arm.</item>
-    /// <item><b>Y</b>: E-Stop. <b>Hold X</b> for one second: reset.</item>
+    /// <item><b>Y</b>: E-Stop. <b>X</b>: reset (refused while any motion control is held).</item>
     /// <item><b>Right stick</b>: left free for the rig's own teleport (forward) and snap turn.</item>
     /// </list>
     /// Bindings use XR usages ({GripButton}, {Primary2DAxis}) rather than device-specific paths, so
@@ -24,8 +26,6 @@ namespace DataCenter.Teleop
         [SerializeField, Tooltip("Stick dead zone.")]
         float m_DeadZone = 0.2f;
 
-        [SerializeField, Tooltip("How long X must be held to reset the E-Stop, in seconds.")]
-        float m_ResetHoldTime = 1f;
 
         [SerializeField, Tooltip("Turn rate from A / B, as a share of the robot's top turn rate.")]
         [Range(0.1f, 1f)]
@@ -40,16 +40,12 @@ namespace DataCenter.Teleop
         InputAction m_EStop;
         InputAction m_Reset;
         InputAction m_Home;
-        float m_ResetHeldFor;
-        bool m_ResetFired;
         bool m_TriggerWasPressed;
 
         public bool isActive => XRPlatform.isImmersive;
 
         public string displayName => "XR Controllers";
 
-        /// <summary>Progress of the hold-to-reset gesture, 0 to 1, for the VR panel.</summary>
-        public float resetHoldProgress => m_ResetHoldTime > 0f ? Mathf.Clamp01(m_ResetHeldFor / m_ResetHoldTime) : 0f;
 
         void Awake()
         {
@@ -96,7 +92,13 @@ namespace DataCenter.Teleop
         public void Poll(ref TeleopIntent intent, in TeleopContext context)
         {
             var deadman = m_LeftGrip.IsPressed() || m_RightGrip.IsPressed();
-            intent.deadman |= deadman;
+
+            // Hold-to-run: the spring-return stick and the A / B buttons are enabling devices in
+            // their own right, so any of them held counts as the deadman. Release them all and the
+            // robot stops, exactly as when a grip is released.
+            var driving = m_LeftStick.ReadValue<Vector2>().sqrMagnitude > m_DeadZone * m_DeadZone
+                          || m_TurnClockwise.IsPressed() || m_TurnAnticlockwise.IsPressed();
+            intent.deadman |= deadman || driving || m_Home.IsPressed();
 
             // Left stick: move, in the direction the operator is looking. The stick is turned into a
             // floor-plane direction from the head pose, then expressed in the robot's own frame, so
@@ -136,20 +138,8 @@ namespace DataCenter.Teleop
             if (m_Home.WasPressedThisFrame())
                 intent.homeArm = true;
 
-            if (m_Reset.IsPressed())
-            {
-                m_ResetHeldFor += Time.unscaledDeltaTime;
-                if (!m_ResetFired && m_ResetHeldFor >= m_ResetHoldTime)
-                {
-                    m_ResetFired = true;
-                    intent.resetEStop = true;
-                }
-            }
-            else
-            {
-                m_ResetHeldFor = 0f;
-                m_ResetFired = false;
-            }
+            if (m_Reset.WasPressedThisFrame())
+                intent.resetEStop = true;
         }
 
         static Vector3 Flatten(Vector3 direction, Vector3 fallback)

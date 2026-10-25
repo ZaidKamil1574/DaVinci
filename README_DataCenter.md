@@ -74,14 +74,14 @@ directly, so the Da Vinci build is unchanged.
 
 | Input | Action |
 |---|---|
-| **Either grip** | Deadman. Gripping the handle at the gripper also grabs it: one squeeze enables and steers. Left grip + left stick drives one-handed. |
-| **Left stick** | Move the robot, including sideways. Push the way you want it to go, as you see it: directions follow your view, not the robot's heading. |
-| **A / B** | Rotate the robot clockwise / anticlockwise while held |
-| Right stick forward, release | Teleport yourself to where the arc lands |
+| **Either grip** | Deadman for the arm. Gripping the handle at the gripper also grabs it: one squeeze enables and steers. |
+| **Left stick** | Move the robot, including sideways. Push the way you want it to go, as you see it: directions follow your view, not the robot's heading. Hold-to-run: let go and it stops; no grip needed. |
+| **A / B** | Rotate the robot clockwise / anticlockwise while held (hold-to-run) |
+| Right stick forward, release | Teleport yourself to where the arc lands (the arc passes through the robot, so you can land beside it) |
 | Right stick left / right | Snap turn yourself |
 | Right trigger | Close the gripper while held |
 | Left stick click | Home the arm |
-| Y | E-Stop. **Hold X** for one second to reset. |
+| Y | E-Stop. **X** resets it once you have let go of every control. |
 | Left-wrist menu | Robots, mode, link preset, tutorial, E-Stop reset |
 | Red pedestal beside you | E-Stop |
 | Console stand (Console mode) | Left lever: base. Right lever: tool. Knob: wrist roll. |

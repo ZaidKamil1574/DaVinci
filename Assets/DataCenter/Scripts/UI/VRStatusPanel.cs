@@ -54,10 +54,36 @@ namespace DataCenter.UI
         float m_RefreshRate = 6f;
 
         readonly StringBuilder m_Builder = new StringBuilder(512);
+        string m_LastMessage;
+        ToastLevel m_LastLevel;
+        float m_LastMessageUntil;
         Vector3 m_TargetPosition;
         bool m_Following;
         bool m_Placed;
         float m_NextRefresh;
+
+        void OnEnable() => EventBus.Subscribe<ToastEvent>(OnToast);
+
+        void OnDisable() => EventBus.Unsubscribe<ToastEvent>(OnToast);
+
+        // The desktop HUD shows these as toasts; in the headset they are the panel's last line, so
+        // refusals ("release the deadman first") are visible where the operator is looking.
+        void OnToast(ToastEvent toast)
+        {
+            m_LastMessage = toast.message;
+            m_LastLevel = toast.level;
+            m_LastMessageUntil = Time.unscaledTime + 5f;
+            m_NextRefresh = 0f;
+        }
+
+        void AppendLastMessage()
+        {
+            if (string.IsNullOrEmpty(m_LastMessage) || Time.unscaledTime > m_LastMessageUntil)
+                return;
+
+            var color = m_LastLevel == ToastLevel.Error ? "#FF453A" : m_LastLevel == ToastLevel.Warning ? "#FFB020" : m_LastLevel == ToastLevel.Success ? "#2EE66B" : "#19D3FF";
+            m_Builder.Append("\n<size=85%><color=").Append(color).Append('>').Append(m_LastMessage).Append("</color></size>");
+        }
 
         void Start()
         {
@@ -147,13 +173,13 @@ namespace DataCenter.UI
             m_Builder.Append("   <color=#8B98A5>LINK</color> ").Append(Mathf.RoundToInt(stats.averageLatencyMs)).Append(" ms\n");
 
             if (stopped)
-                m_Builder.Append("<color=#FF453A><b>E-STOP LATCHED</b></color>  <size=70%>hold X to reset</size>\n");
+                m_Builder.Append("<color=#FF453A><b>E-STOP LATCHED</b></color>  <size=70%>let go of everything, then press X</size>\n");
             else if (robot.watchdogTripped)
                 m_Builder.Append("<color=#FFB020><b>LINK WATCHDOG STOP</b></color>\n");
             else if (live)
                 m_Builder.Append("<color=#2EE66B><b>MOTION ENABLED</b></color>\n");
             else
-                m_Builder.Append("<color=#8B98A5>Squeeze grip to enable motion</color>\n");
+                m_Builder.Append("<color=#8B98A5>Left stick / A / B drive  ·  grip the handle to move the arm</color>\n");
 
             var sensor = m_Proximity != null ? m_Proximity.sensor : null;
             if (sensor != null && !float.IsInfinity(sensor.toolDistance))
@@ -169,6 +195,7 @@ namespace DataCenter.UI
             {
                 m_Builder.Append("\n<color=#2EE66B><b>TUTORIAL ").Append(m_Tutorial.stepNumber).Append('/').Append(TutorialController.stepCount)
                     .Append("</b></color>  <size=80%>").Append(m_Tutorial.instruction).Append("</size>");
+                AppendLastMessage();
                 m_Text.SetText(m_Builder);
                 return;
             }
@@ -187,6 +214,7 @@ namespace DataCenter.UI
                 m_Builder.Append("\n<color=#2EE66B><b>Section complete</b></color>");
             }
 
+            AppendLastMessage();
             m_Text.SetText(m_Builder);
         }
 
