@@ -6,6 +6,7 @@
         "DataCenter.Robotics",
         "DataCenter.Tasks",
         "DataCenter.Teleop",
+        "Unity.InputSystem",
         "Unity.TextMeshPro",
         "Unity.XR.Interaction.Toolkit"
     ],

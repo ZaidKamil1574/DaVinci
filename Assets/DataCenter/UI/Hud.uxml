@@ -3,16 +3,40 @@
     <Style src="Hud.uss" />
     <ui:VisualElement name="root" class="dc-root" picking-mode="Ignore">
 
-        <!-- Top bar: identity on the left, link health in the middle, mode on the right -->
+        <!-- Top bar: identity on the left, mode on the right. Link health has its own panel. -->
         <ui:VisualElement name="topbar" class="dc-topbar">
             <ui:VisualElement class="dc-topbar__group">
                 <ui:Label text="DC&lt;color=#19D3FF&gt;//&lt;/color&gt;TELEOP" class="dc-brand" enable-rich-text="true" />
                 <ui:Label name="section-label" text="SECTION A · SERVER HALL" class="dc-chip dc-chip--accent" />
             </ui:VisualElement>
             <ui:VisualElement class="dc-topbar__group">
+                <ui:Button name="assist-button" text="ASSIST ON" class="dc-button dc-button--active" />
+                <ui:Button name="tutorial-button" text="TUTORIAL" class="dc-button" />
+                <ui:Button name="link-button" text="LINK" class="dc-button" />
+                <ui:Button name="mode-direct" text="DIRECT" class="dc-button dc-button--active" />
+                <ui:Button name="mode-console" text="CONSOLE" class="dc-button" />
+                <ui:Label name="input-source" text="Keyboard + Mouse" class="dc-label-muted" />
+            </ui:VisualElement>
+        </ui:VisualElement>
+
+        <!-- Top centre: link health and frame rate, with the last few seconds of each -->
+        <ui:VisualElement name="perf" class="dc-panel dc-perf" picking-mode="Ignore">
+            <ui:VisualElement class="dc-perf__metric">
+                <ui:Label text="LATENCY" class="dc-stat__label" />
+                <ui:Label name="link-latency" text="-- ms" class="dc-perf__value" />
+            </ui:VisualElement>
+            <ui:VisualElement name="latency-graph" class="dc-perf__graph dc-perf__graph--latency" />
+            <ui:VisualElement class="dc-perf__divider" />
+            <ui:VisualElement class="dc-perf__metric">
+                <ui:Label text="FRAME RATE" class="dc-stat__label" />
+                <ui:Label name="fps" text="--" class="dc-perf__value" />
+            </ui:VisualElement>
+            <ui:VisualElement name="fps-graph" class="dc-perf__graph dc-perf__graph--fps" />
+            <ui:VisualElement class="dc-perf__divider" />
+            <ui:VisualElement class="dc-perf__extra">
                 <ui:VisualElement class="dc-stat">
-                    <ui:Label text="LINK" class="dc-stat__label" />
-                    <ui:Label name="link-latency" text="-- ms" class="dc-stat__value" />
+                    <ui:Label text="FRAME" class="dc-stat__label" />
+                    <ui:Label name="perf-frame" text="-- ms" class="dc-stat__value" />
                 </ui:VisualElement>
                 <ui:VisualElement class="dc-stat">
                     <ui:Label text="LOSS" class="dc-stat__label" />
@@ -22,18 +46,6 @@
                     <ui:Label text="CMD AGE" class="dc-stat__label" />
                     <ui:Label name="link-age" text="-- ms" class="dc-stat__value" />
                 </ui:VisualElement>
-                <ui:VisualElement class="dc-stat">
-                    <ui:Label text="FPS" class="dc-stat__label" />
-                    <ui:Label name="fps" text="--" class="dc-stat__value" />
-                </ui:VisualElement>
-            </ui:VisualElement>
-            <ui:VisualElement class="dc-topbar__group">
-                <ui:Button name="assist-button" text="ASSIST ON" class="dc-button dc-button--active" />
-                <ui:Button name="tutorial-button" text="TUTORIAL" class="dc-button" />
-                <ui:Button name="link-button" text="LINK" class="dc-button" />
-                <ui:Button name="mode-direct" text="DIRECT" class="dc-button dc-button--active" />
-                <ui:Button name="mode-console" text="CONSOLE" class="dc-button" />
-                <ui:Label name="input-source" text="Keyboard + Mouse" class="dc-label-muted" />
             </ui:VisualElement>
         </ui:VisualElement>
 
@@ -104,17 +116,17 @@
 
         <!-- Right: work orders -->
         <ui:VisualElement class="dc-column dc-column--right" picking-mode="Ignore">
-            <ui:VisualElement class="dc-panel">
+            <ui:VisualElement class="dc-panel dc-order">
                 <ui:VisualElement class="dc-panel__header">
-                    <ui:Label text="WORK ORDER" class="dc-panel__title" />
+                    <ui:Label name="order-id" text="WO-A-001" class="dc-order__id" />
                     <ui:Label name="order-status" text="ACTIVE" class="dc-chip dc-chip--accent" />
                 </ui:VisualElement>
-                <ui:Label name="order-id" text="WO-A-001" class="dc-order__id" />
                 <ui:Label name="order-summary" text="-" class="dc-order__summary" />
                 <ui:VisualElement class="dc-order__next">
                     <ui:Label text="NEXT" class="dc-order__next-tag" />
                     <ui:Label name="order-next" text="" class="dc-order__next-text" />
                 </ui:VisualElement>
+                <ui:VisualElement name="order-keys" class="dc-keys" />
                 <ui:VisualElement name="endpoint-from" class="dc-order__endpoint">
                     <ui:VisualElement name="endpoint-from-dot" class="dc-dot" />
                     <ui:Label text="FROM" class="dc-order__endpoint-label" />
@@ -128,7 +140,7 @@
                 </ui:VisualElement>
                 <ui:VisualElement class="dc-order__stats">
                     <ui:VisualElement class="dc-order__stat">
-                        <ui:Label text="ELAPSED" class="dc-label-muted" />
+                        <ui:Label text="TIME" class="dc-label-muted" />
                         <ui:Label name="order-elapsed" text="0:00" class="dc-order__stat-value" />
                     </ui:VisualElement>
                     <ui:VisualElement class="dc-order__stat">
@@ -140,26 +152,24 @@
                         <ui:Label name="gripper-state" text="OPEN" class="dc-order__stat-value" />
                     </ui:VisualElement>
                 </ui:VisualElement>
-                <ui:VisualElement class="dc-progress-row">
+                <ui:VisualElement class="dc-progress-row dc-order__progress">
                     <ui:VisualElement class="dc-bar">
                         <ui:VisualElement name="section-progress" class="dc-bar__fill dc-bar__fill--ok" />
                     </ui:VisualElement>
                     <ui:Label name="section-progress-label" text="0 / 0" />
                 </ui:VisualElement>
-            </ui:VisualElement>
-            <ui:VisualElement class="dc-panel">
-                <ui:VisualElement class="dc-panel__header">
-                    <ui:Label text="QUEUE" class="dc-panel__title" />
-                </ui:VisualElement>
+                <ui:Label text="QUEUE" class="dc-panel__title dc-order__queue-title" />
                 <ui:VisualElement name="order-list" />
             </ui:VisualElement>
+
         </ui:VisualElement>
 
-        <!-- Bottom left: controls -->
-        <ui:VisualElement name="help" class="dc-panel dc-help dc-help--collapsed">
+        <!-- Bottom centre: keyboard controls, above the deadman banner. C hides and shows it. -->
+        <ui:VisualElement name="help" class="dc-panel dc-help">
             <ui:VisualElement class="dc-panel__header">
-                <ui:Label text="CONTROLS" class="dc-panel__title" />
-                <ui:Button name="help-toggle" text="SHOW" class="dc-button" />
+                <ui:Label text="KEYBOARD CONTROLS" class="dc-panel__title" />
+                <ui:Label text="Hold a key to move · let go to stop" class="dc-label-muted dc-help__hint" />
+                <ui:Button name="help-toggle" text="HIDE  (C)" class="dc-button" />
             </ui:VisualElement>
             <ui:VisualElement name="help-body" class="dc-help__body" />
         </ui:VisualElement>
@@ -175,7 +185,7 @@
 
         <!-- Bottom centre: deadman state -->
         <ui:VisualElement name="deadman" class="dc-deadman" picking-mode="Ignore">
-            <ui:Label name="deadman-key" text="SPACE" class="dc-deadman__key" />
+            <ui:Label name="deadman-key" text="HOLD" class="dc-deadman__key" />
             <ui:Label name="deadman-text" text="HOLD TO ENABLE MOTION" class="dc-deadman__text" />
         </ui:VisualElement>
 

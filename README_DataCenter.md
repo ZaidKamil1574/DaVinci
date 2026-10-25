@@ -62,20 +62,38 @@ directly, so the Da Vinci build is unchanged.
 
 ### Desktop (and the web page outside VR)
 
+Every movement key is **hold-to-run**: holding it is the deadman, letting go stops the robot. The
+same keys are on screen in the **Keyboard controls** panel (C hides and shows it).
+
 | Input | Action |
 |---|---|
-| **Hold Space** | Deadman. Nothing moves without it. |
+| W / S, A / D | Drive the base forward / back, turn |
+| Arrows | Move the gripper up, down, left, right as seen on screen |
+| R / F | Reach out / pull back (away from / toward the camera) |
+| | A tap moves about a centimetre; holding speeds up to 0.3 m/s |
+| Q / E | Tilt the gripper up / down |
+| Z / X | Roll the gripper |
+| Tap Shift (or G) | Grab / let go of the cable (the tap enables motion for a moment, so the command reaches the robot) |
+| Shift + W A S D | Move the camera around the hall; V, driving or picking a robot brings it back |
+| Right-drag, scroll | Look around, zoom |
 | Drag the cyan handle | Move the tool in the camera plane (scroll while dragging: depth) |
-| Arrows, R / F | Nudge the tool relative to the robot (Shift: fine) |
-| Q / E, Z / X | Wrist roll, wrist pitch |
-| G | Gripper open / close |
-| W A S D | Drive the base |
-| Right-click floor, or Space + click minimap | Navigate there |
-| Right-drag, scroll | Orbit and zoom the camera |
+| Space + right-click floor, or Space + click minimap | Navigate there (Space is the deadman for clicks) |
 | 1 - 4, click a robot card or minimap dot | Switch robot |
 | Tab | Direct / Console mode |
-| H | Home the arm |
-| Backspace / Shift + Backspace | E-Stop / reset (reset refused while the deadman is held) |
+| Hold H | Bring the arm home |
+| Backspace / Shift + Backspace | E-Stop / reset (reset refused while a movement key is held) |
+| C | Hide / show the keyboard controls panel |
+
+**HUD.** The **Link & performance** card under the top bar shows link latency and frame rate as
+numbers and as graphs of the last eight seconds (dashed lines: the 100 ms latency budget and the
+60 fps target, 72 on Quest), with frame time, packet loss and command age beside them.
+
+**Live key hints.** For the current step the guidance works out which keys close the gap to the
+target and how far, using the same screen-relative directions as the arrows: for example
+`[UP] 12 cm  [RIGHT] 8 cm  [R] reach 5 cm`, then `[SHIFT] tap to grab` once the plug is in reach.
+They show under the floating marker at the target and as key chips under NEXT on the work order
+card. Out of the arm's reach they name the base keys instead (`[D] turn right`, `[W] drive 0.8 m
+closer`); at the port they add `[Q]`/`[E]` when the plug needs tilting.
 
 ### Quest controllers
 
@@ -291,10 +309,11 @@ or use OVR Metrics Tool's overlay.
 ## Demo script (60 to 90 seconds)
 
 1. **(0:00) Overview.** Start on Atlas in the Server Hall. Point out the HUD: fleet on the left,
-   work order on the right, link stats and FPS on top, minimap bottom right.
-2. **(0:10) Deadman.** Drag the handle without Space: nothing moves. Hold Space: the banner turns
-   green and the arm follows, with the ghost gripper leading the real one.
-3. **(0:20) Pick and insert.** Lower onto a blue RJ45 plug, G to grip, carry it to the blinking
+   work order (with the live key hints) on the right, the latency and frame-rate graphs on top,
+   keyboard controls bottom centre, minimap bottom right.
+2. **(0:10) Hold-to-run.** Hold an arrow key: the banner turns green and the arm follows, with the
+   ghost gripper leading the real one. Let go: it stops.
+3. **(0:20) Pick and insert.** Follow the key hints down onto a blue RJ45 plug, tap Shift to grip, carry it to the blinking
    cyan port on the patch panel. The proximity pill goes yellow then red and the speed cap kicks
    in. Release: the LED goes amber, then green, with the link-up chime.
 4. **(0:35) Wrong connector.** Pick the yellow LC fiber lead and offer it to an RJ45 port: red flash,

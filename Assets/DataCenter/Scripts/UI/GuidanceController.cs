@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 using DataCenter.Robotics;
@@ -17,6 +18,19 @@ namespace DataCenter.UI
         SectionComplete,
     }
 
+    /// <summary>One key to press right now and what it does, for the live hints.</summary>
+    public struct KeyHint
+    {
+        public string key;
+        public string action;
+
+        public KeyHint(string key, string action)
+        {
+            this.key = key;
+            this.action = action;
+        }
+    }
+
     /// <summary>
     /// Step-by-step guidance for the selected robot's work order: a floating marker and label at
     /// whatever to do next (the cable end to pick up, or the port to plug into), a guide line from
@@ -26,6 +40,9 @@ namespace DataCenter.UI
     /// The next step is worked out from what the robot and ports actually show each refresh, never
     /// from a script, so it stays right whatever order the operator does things in. The same
     /// instruction is shown on the desktop HUD and the VR dashboard.
+    /// On the desktop it also works out which keys to press now, and how far, from where the
+    /// gripper is relative to the target in the same screen-relative directions the arrow keys use.
+    /// Those show under the marker and on the HUD.
     /// </remarks>
     public class GuidanceController : MonoBehaviour
     {
@@ -58,6 +75,14 @@ namespace DataCenter.UI
         static readonly Color k_Warn = new Color(1f, 0.69f, 0.13f);
         static readonly int k_BaseColor = Shader.PropertyToID("_BaseColor");
 
+        // Offsets smaller than this need no key: the gripper's 5 cm grab range and the assist's
+        // 6 cm seat radius both take care of them.
+        const float k_Tolerance = 0.02f;
+        const int k_MaxMoveHints = 3;
+
+        readonly List<KeyHint> m_Keys = new List<KeyHint>();
+        readonly List<(float distance, string key, string action)> m_Moves = new List<(float, string, string)>();
+
         MaterialPropertyBlock m_Block;
         float m_NextRefresh;
         Transform m_Target;
@@ -69,6 +94,9 @@ namespace DataCenter.UI
 
         /// <summary>Full instruction sentence, for the HUD and the VR dashboard.</summary>
         public string instruction { get; private set; } = string.Empty;
+
+        /// <summary>Keys to press now to get on with the step, most useful first. Desktop only; empty in VR.</summary>
+        public IReadOnlyList<KeyHint> keyHints => m_Keys;
 
         void Start()
         {
@@ -96,6 +124,7 @@ namespace DataCenter.UI
         {
             m_Target = null;
             m_TargetPort = null;
+            m_Keys.Clear();
 
             var robot = m_Operator != null ? m_Operator.robot : null;
             if (robot == null || m_WorkOrders == null)
@@ -109,7 +138,8 @@ namespace DataCenter.UI
             {
                 Set(GuidanceKind.EStopped, vr
                     ? "E-STOP latched. Let go of every control, then press X to reset."
-                    : "E-STOP latched. Release SPACE, then press SHIFT + BACKSPACE (or RESET).", null, k_Warn);
+                    : "E-STOP latched. Let go of every key, then press SHIFT + BACKSPACE (or RESET).", null, k_Warn);
+                AddKey(vr, "SHIFT + BKSP", "reset the E-Stop");
                 return;
             }
 
@@ -119,6 +149,7 @@ namespace DataCenter.UI
                 Set(GuidanceKind.SectionComplete, vr
                     ? $"Section {robot.sectionId} is done. Pick another robot on the wrist menu."
                     : $"Section {robot.sectionId} is done. Press 1-4 or click another robot.", null, k_Plug);
+                AddKey(vr, "1 - 4", "next robot");
                 return;
             }
 
@@ -142,9 +173,10 @@ namespace DataCenter.UI
             {
                 Set(GuidanceKind.WrongCable, vr
                     ? $"That is the wrong cable. Open the gripper (let go of L2) and pick up the {typeName} cable {cable.cableId}."
-                    : $"That is the wrong cable. Open the gripper (G) and pick up the {typeName} cable {cable.cableId}.",
+                    : $"That is the wrong cable. Tap SHIFT to let go of it, then pick up the {typeName} cable {cable.cableId}.",
                     held.transform, k_Warn);
-                m_Label.text = "WRONG CABLE\n<size=70%>put it down</size>";
+                AddKey(vr, "SHIFT", "tap to let go");
+                m_Label.text = "WRONG CABLE\n<size=70%>put it down</size>" + KeyLine(vr);
                 return;
             }
 
@@ -153,13 +185,17 @@ namespace DataCenter.UI
                 m_TargetPort = nextPort;
                 var step = endsDone * 2 + 2;
                 var plugText = CableConnector.insertionAssist
-                    ? $"Step {step}/4: Bring the plug to {nextPort.portId}. Within a few centimetres, roughly pointing at it, it lines up and plugs in by itself."
+                    ? vr
+                        ? $"Step {step}/4: Bring the plug to {nextPort.portId}. Within a few centimetres, roughly pointing at it, it lines up and plugs in by itself."
+                        : $"Step {step}/4: Bring the plug to {nextPort.portId} with the keys shown at the marker. Within a few centimetres it lines up and plugs in by itself."
                     : vr
                         ? $"Step {step}/4: Plug into {nextPort.portId}. Line the plug up with the green line (R2 + right stick to turn it), push it in, then let go of L2."
-                        : $"Step {step}/4: Plug into {nextPort.portId}. Line the plug up with the green line (Q E Z X to turn it), push it in, then press G to open.";
+                        : $"Step {step}/4: Plug into {nextPort.portId}. Line the plug up with the green line (Q / E to tilt it), push it in, then tap SHIFT to let go.";
                 Set(GuidanceKind.Plug, plugText,
                     nextPort.socket, k_Plug);
-                m_Label.text = $"{step} · PLUG IN\n<size=70%>{nextPort.portId}</size>";
+                if (!vr)
+                    AddPlugHints(robot, held, nextPort);
+                m_Label.text = $"{step} · PLUG IN\n<size=70%>{nextPort.portId}</size>" + KeyLine(vr);
                 return;
             }
 
@@ -168,9 +204,135 @@ namespace DataCenter.UI
             var pickStep = endsDone * 2 + 1;
             Set(GuidanceKind.Pick, vr
                 ? $"Step {pickStep}/4: Move the gripper over the marked end of {typeName} cable {cable.cableId} on the cart (right stick, hold it in to reach) and hold L2 to grab it."
-                : $"Step {pickStep}/4: Move the gripper over the marked end of {typeName} cable {cable.cableId} on the cart (drag the handle, R/F for height) and press G to grab it.",
+                : $"Step {pickStep}/4: Move the gripper to the marked end of {typeName} cable {cable.cableId} on the cart (arrow keys, R / F to reach), then tap SHIFT to grab it.",
                 end.transform, k_Pick);
-            m_Label.text = $"{pickStep} · PICK UP\n<size=70%>{typeName} cable {cable.cableId}</size>";
+            if (!vr)
+            {
+                var inRange = robot.gripper != null && robot.gripper.FindNearestInRange() is CableConnector near && near.cable == cable;
+                if (inRange)
+                    AddKey(false, "SHIFT", "tap to grab");
+                else
+                    AddMoveHints(robot, end.transform.position);
+            }
+
+            m_Label.text = $"{pickStep} · PICK UP\n<size=70%>{typeName} cable {cable.cableId}</size>" + KeyLine(vr);
+        }
+
+        void AddKey(bool vr, string key, string action)
+        {
+            if (!vr)
+                m_Keys.Add(new KeyHint(key, action));
+        }
+
+        /// <summary>
+        /// Keys that close the gap from the gripper to <paramref name="target"/>: the robot's base
+        /// first if the arm cannot reach, otherwise the arm keys for the largest offsets.
+        /// </summary>
+        void AddMoveHints(TeleopRobot robot, Vector3 target)
+        {
+            var arm = robot.arm;
+            if (arm == null || arm.toolTip == null)
+                return;
+
+            if (AddDriveHints(robot, target))
+                return;
+
+            DesktopTeleopInput.GetArmAxes(Camera.main, arm.baseFrame, out var right, out var reach);
+            var offset = target - arm.toolTip.position;
+            var up = offset.y;
+            var side = Vector3.Dot(offset, right);
+            var depth = Vector3.Dot(offset, reach);
+
+            m_Moves.Clear();
+            m_Moves.Add((Mathf.Abs(up), up > 0f ? "UP" : "DOWN", Centimetres(up)));
+            m_Moves.Add((Mathf.Abs(side), side > 0f ? "RIGHT" : "LEFT", Centimetres(side)));
+            m_Moves.Add((Mathf.Abs(depth), depth > 0f ? "R" : "F", (depth > 0f ? "reach " : "back ") + Centimetres(depth)));
+            m_Moves.Sort((a, b) => b.distance.CompareTo(a.distance));
+
+            for (var i = 0; i < m_Moves.Count && m_Keys.Count < k_MaxMoveHints; i++)
+            {
+                if (m_Moves[i].distance > k_Tolerance)
+                    m_Keys.Add(new KeyHint(m_Moves[i].key, m_Moves[i].action));
+            }
+        }
+
+        /// <summary>Adds base keys when the target is beyond the arm's reach. Returns whether it did.</summary>
+        bool AddDriveHints(TeleopRobot robot, Vector3 target)
+        {
+            var arm = robot.arm;
+            if (arm.joints.Count < 2 || arm.joints[1].joint == null)
+                return false;
+
+            var shoulder = arm.joints[1].joint.position;
+            var shortfall = Vector3.Distance(shoulder, target) - (robot.spec.armReach + 0.1f);
+            if (shortfall <= 0f)
+                return false;
+
+            var heading = Vector3.ProjectOnPlane(robot.transform.forward, Vector3.up);
+            var toTarget = Vector3.ProjectOnPlane(target - robot.transform.position, Vector3.up);
+            var turn = Vector3.SignedAngle(heading, toTarget, Vector3.up);
+            if (Mathf.Abs(turn) > 35f)
+                m_Keys.Add(new KeyHint(turn > 0f ? "D" : "A", turn > 0f ? "turn right" : "turn left"));
+            else
+                m_Keys.Add(new KeyHint("W", $"drive {shortfall:0.0} m closer"));
+            return true;
+        }
+
+        /// <summary>Plug step: move to the port, then square the plug up if assist would refuse it.</summary>
+        void AddPlugHints(TeleopRobot robot, CableConnector held, PortSocket port)
+        {
+            var socket = port.socket;
+            var distance = Vector3.Distance(held.tip.position, socket.position);
+            var seatRadius = CableConnector.insertionAssist ? held.assistSeatRadius : (port.type != null ? port.type.captureRadius : 0.02f);
+            var seatAngle = CableConnector.insertionAssist ? held.assistSeatAngle : (port.type != null ? port.type.captureAngle : 25f);
+            var angle = Vector3.Angle(held.tip.forward, socket.forward);
+
+            if (distance > seatRadius)
+            {
+                // Aim a little in front of the port, so the plug arrives along the green line.
+                AddMoveHints(robot, socket.position - socket.forward * 0.02f);
+                if (m_Keys.Count > 0 || distance > seatRadius * 2f)
+                    return;
+            }
+
+            if (angle > seatAngle * 0.8f)
+            {
+                // Tilt (Q / E) fixes the vertical part; the base turn fixes the horizontal part.
+                var tilt = Mathf.Asin(Mathf.Clamp(socket.forward.y, -1f, 1f)) - Mathf.Asin(Mathf.Clamp(held.tip.forward.y, -1f, 1f));
+                if (Mathf.Abs(tilt * Mathf.Rad2Deg) > 10f)
+                {
+                    m_Keys.Add(new KeyHint(tilt > 0f ? "Q" : "E", tilt > 0f ? "tilt up" : "tilt down"));
+                }
+                else
+                {
+                    var yaw = Vector3.SignedAngle(Vector3.ProjectOnPlane(held.tip.forward, Vector3.up), Vector3.ProjectOnPlane(socket.forward, Vector3.up), Vector3.up);
+                    m_Keys.Add(new KeyHint(yaw > 0f ? "D" : "A", yaw > 0f ? "turn right" : "turn left"));
+                }
+
+                return;
+            }
+
+            if (!CableConnector.insertionAssist)
+                m_Keys.Add(new KeyHint("SHIFT", "tap to let go and seat it"));
+        }
+
+        static string Centimetres(float metres) => $"{Mathf.Abs(metres) * 100f:0} cm";
+
+        /// <summary>The keys as one line under the marker label, like "[UP] 12 cm   [R] reach 5 cm".</summary>
+        string KeyLine(bool vr)
+        {
+            if (vr || m_Keys.Count == 0)
+                return string.Empty;
+
+            var line = new System.Text.StringBuilder("\n<size=55%><color=#FFFFFF>");
+            for (var i = 0; i < m_Keys.Count; i++)
+            {
+                if (i > 0)
+                    line.Append("   ");
+                line.Append('[').Append(m_Keys[i].key).Append("] ").Append(m_Keys[i].action);
+            }
+
+            return line.Append("</color></size>").ToString();
         }
 
         static bool IsCable(PortSocket port, VerletCable cable) => port.occupant != null && port.occupant.cable == cable;

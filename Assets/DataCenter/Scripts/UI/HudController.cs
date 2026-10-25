@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using UnityEngine.UIElements;
 using DataCenter.Robotics;
 using DataCenter.Tasks;
@@ -75,6 +76,17 @@ namespace DataCenter.UI
         Button m_ModeDirect, m_ModeConsole, m_EStopButton;
         MinimapElement m_Minimap;
         Label m_OrderNext;
+        VisualElement m_OrderKeys;
+        string m_KeysShown = string.Empty;
+        SparklineElement m_LatencyGraph, m_FpsGraph;
+        bool m_HelpUserToggled;
+
+        // Taller than this (panel units) and the controls panel starts folded; see OnHelpGeometryChanged.
+        const float k_HelpMaxHeight = 240f;
+        Label m_FrameTime;
+
+        // Dashed guides on the graphs: a comfortable teleoperation latency, and the frame rate to hold.
+        const float k_LatencyBudgetMs = 100f;
         VisualElement m_LinkPanel, m_TutorialCard, m_TutorialDots, m_Console, m_ProximityPill, m_ProximityDot, m_WristView;
         Label m_TutorialStep, m_TutorialTime, m_TutorialText, m_ProximityValue, m_ProximityCap, m_CommandGap, m_LinkInFlight, m_LinkDetail, m_WristRate, m_WristOverlay;
         Slider m_LatencySlider, m_JitterSlider, m_LossSlider;
@@ -108,7 +120,8 @@ namespace DataCenter.UI
             m_ModeConsole.clicked += OnModeConsole;
             m_EStopButton.clicked += OnEStop;
             m_Root.Q<Button>("estop-reset").clicked += OnReset;
-            m_Root.Q<Button>("help-toggle").clicked += ToggleHelp;
+            m_Root.Q<Button>("help-toggle").clicked += OnHelpToggleClicked;
+            m_Help.RegisterCallback<GeometryChangedEvent>(OnHelpGeometryChanged);
             var assist = m_Root.Q<Button>("assist-button");
             if (assist != null)
             {
@@ -132,7 +145,26 @@ namespace DataCenter.UI
             BuildTutorial();
             BuildConsole();
             BuildWristCam();
+            BuildPerformance();
             RebuildRobotList();
+        }
+
+        void BuildPerformance()
+        {
+            m_LatencyGraph = AddGraph("latency-graph", k_LatencyBudgetMs);
+            m_FpsGraph = AddGraph("fps-graph", 60f);
+        }
+
+        SparklineElement AddGraph(string hostName, float guide)
+        {
+            var host = m_Root.Q(hostName);
+            if (host == null)
+                return null;
+
+            host.Clear();
+            var graph = new SparklineElement(Mathf.RoundToInt(m_RefreshRate * 8f)) { guide = guide };
+            host.Add(graph);
+            return graph;
         }
 
         void OnDisable()
@@ -180,6 +212,8 @@ namespace DataCenter.UI
             m_ProgressLabel = m_Root.Q<Label>("section-progress-label");
             m_OrderList = m_Root.Q("order-list");
             m_OrderNext = m_Root.Q<Label>("order-next");
+            m_OrderKeys = m_Root.Q("order-keys");
+            m_FrameTime = m_Root.Q<Label>("perf-frame");
 
             m_Deadman = m_Root.Q("deadman");
             m_DeadmanText = m_Root.Q<Label>("deadman-text");
@@ -439,31 +473,130 @@ namespace DataCenter.UI
         {
             var body = m_Root.Q("help-body");
             body.Clear();
-            AddHelp(body, "HOLD SPACE", "Deadman - enable motion");
-            AddHelp(body, "DRAG HANDLE", "Move tool (scroll: depth)");
-            AddHelp(body, "ARROWS  R F", "Nudge tool  (Shift: fine)");
-            AddHelp(body, "Q E  /  Z X", "Wrist roll / pitch");
-            AddHelp(body, "G", "Gripper open / close");
-            AddHelp(body, "W A S D", "Drive base");
-            AddHelp(body, "RIGHT-CLICK", "Navigate to point");
-            AddHelp(body, "RIGHT-DRAG", "Orbit camera");
-            AddHelp(body, "H", "Home arm");
-            AddHelp(body, "1 - 4", "Switch robot");
-            AddHelp(body, "TAB", "Direct / console mode");
-            AddHelp(body, "BACKSPACE", "E-Stop");
+
+            var drive = AddHelpGroup(body, "DRIVE BASE");
+            AddHelp(drive, "W S", "forward / back");
+            AddHelp(drive, "A D", "turn");
+
+            var arm = AddHelpGroup(body, "MOVE ARM");
+            AddHelp(arm, "UP DOWN", "up / down");
+            AddHelp(arm, "LEFT RIGHT", "left / right");
+            AddHelp(arm, "R F", "reach / back");
+            AddHelp(arm, "H", "hold: home");
+
+            var gripper = AddHelpGroup(body, "GRIPPER");
+            AddHelp(gripper, "SHIFT", "tap: grab / let go");
+            AddHelp(gripper, "Q E", "tilt up / down");
+            AddHelp(gripper, "Z X", "roll");
+
+            var view = AddHelpGroup(body, "CAMERA");
+            AddHelp(view, "SHIFT+WASD", "move");
+            AddHelp(view, "R-DRAG", "look around");
+            AddHelp(view, "SCROLL", "zoom");
+            AddHelp(view, "V", "follow robot");
+
+            var safety = AddHelpGroup(body, "SAFETY");
+            AddHelp(safety, "BKSP", "E-Stop");
+            AddHelp(safety, "SHIFT+BKSP", "reset");
+            AddHelp(safety, "1 - 4", "switch robot");
+            AddHelp(safety, "C", "hide keys");
         }
 
-        static void AddHelp(VisualElement parent, string key, string action)
+        static VisualElement AddHelpGroup(VisualElement parent, string title)
+        {
+            var group = new VisualElement();
+            group.AddToClassList("dc-help__group");
+            var label = new Label(title);
+            label.AddToClassList("dc-help__group-title");
+            group.Add(label);
+            parent.Add(group);
+            return group;
+        }
+
+        /// <summary>
+        /// One row: key caps, then what they do. <paramref name="keys"/> is space-separated caps;
+        /// a "+" inside a cap splits it into a chord, like SHIFT+BKSP. "1 - 4" stays one cap.
+        /// </summary>
+        static void AddHelp(VisualElement parent, string keys, string action)
         {
             var row = new VisualElement();
             row.AddToClassList("dc-help__row");
-            var keyLabel = new Label(key);
-            keyLabel.AddToClassList("dc-help__key");
+            var caps = new VisualElement();
+            caps.AddToClassList("dc-help__keys");
+
+            foreach (var chord in keys == "1 - 4" ? new[] { keys } : keys.Split('+'))
+            {
+                if (caps.childCount > 0)
+                {
+                    var plus = new Label("+");
+                    plus.AddToClassList("dc-help__plus");
+                    caps.Add(plus);
+                }
+
+                foreach (var key in chord == "1 - 4" ? new[] { chord } : chord.Split(' '))
+                    caps.Add(KeyCap(key));
+            }
+
             var actionLabel = new Label(action);
             actionLabel.AddToClassList("dc-help__action");
-            row.Add(keyLabel);
+            row.Add(caps);
             row.Add(actionLabel);
             parent.Add(row);
+        }
+
+        static Label KeyCap(string key)
+        {
+            var cap = new Label(KeyGlyph(key));
+            cap.AddToClassList("dc-key");
+            return cap;
+        }
+
+        /// <summary>Arrow keys as arrows; the HUD font has them, the world-space label font does not.</summary>
+        static string KeyGlyph(string key)
+        {
+            switch (key)
+            {
+                case "UP": return "\u2191";
+                case "DOWN": return "\u2193";
+                case "LEFT": return "\u2190";
+                case "RIGHT": return "\u2192";
+                default: return key;
+            }
+        }
+
+        /// <summary>The guidance's live keys as chips under NEXT, rebuilt only when they change.</summary>
+        void UpdateKeyHints()
+        {
+            if (m_OrderKeys == null)
+                return;
+
+            var hints = m_Guidance != null && !XRPlatform.isImmersive ? m_Guidance.keyHints : null;
+            var signature = string.Empty;
+            if (hints != null)
+            {
+                for (var i = 0; i < hints.Count; i++)
+                    signature += hints[i].key + hints[i].action + "|";
+            }
+
+            if (signature == m_KeysShown)
+                return;
+
+            m_KeysShown = signature;
+            m_OrderKeys.Clear();
+            m_OrderKeys.EnableInClassList("dc-hidden", hints == null || hints.Count == 0);
+            if (hints == null)
+                return;
+
+            for (var i = 0; i < hints.Count; i++)
+            {
+                var item = new VisualElement();
+                item.AddToClassList("dc-keys__item");
+                item.Add(KeyCap(hints[i].key));
+                var action = new Label(hints[i].action);
+                action.AddToClassList("dc-keys__action");
+                item.Add(action);
+                m_OrderKeys.Add(item);
+            }
         }
 
         /// <summary>Insertion assist on or off for every connector. Shown on the HUD button.</summary>
@@ -486,10 +619,29 @@ namespace DataCenter.UI
             button.EnableInClassList("dc-button--active", CableConnector.insertionAssist);
         }
 
+        /// <summary>
+        /// In a narrow window the key groups stack into a tall column that would cover the robot,
+        /// so the panel starts folded there. Only until the operator opens or closes it themselves.
+        /// </summary>
+        void OnHelpGeometryChanged(GeometryChangedEvent e)
+        {
+            if (m_HelpUserToggled || m_Help.ClassListContains("dc-help--collapsed") || e.newRect.height <= k_HelpMaxHeight)
+                return;
+
+            m_Help.AddToClassList("dc-help--collapsed");
+            m_Root.Q<Button>("help-toggle").text = "SHOW KEYS  (C)";
+        }
+
+        void OnHelpToggleClicked()
+        {
+            m_HelpUserToggled = true;
+            ToggleHelp();
+        }
+
         void ToggleHelp()
         {
             m_Help.ToggleInClassList("dc-help--collapsed");
-            m_Root.Q<Button>("help-toggle").text = m_Help.ClassListContains("dc-help--collapsed") ? "SHOW" : "HIDE";
+            m_Root.Q<Button>("help-toggle").text = m_Help.ClassListContains("dc-help--collapsed") ? "SHOW KEYS  (C)" : "HIDE  (C)";
         }
 
         bool IsOverUI(Vector2 screenPosition)
@@ -626,6 +778,10 @@ namespace DataCenter.UI
             UpdateSafety();
             UpdateConsole();
 
+            var keyboard = Keyboard.current;
+            if (keyboard != null && keyboard.cKey.wasPressedThisFrame && !XRPlatform.isImmersive)
+                OnHelpToggleClicked();
+
             if (Time.unscaledTime < m_NextRefresh)
                 return;
 
@@ -654,11 +810,12 @@ namespace DataCenter.UI
             m_Deadman.EnableInClassList("dc-deadman--stopped", stopped || watchdog);
 
             var immersive = XRPlatform.isImmersive;
-            m_DeadmanKey.text = immersive ? "GRIP" : "SPACE";
+            m_DeadmanKey.text = immersive ? "GRIP" : "HOLD";
             m_DeadmanText.text = stopped ? "EMERGENCY STOP LATCHED"
                 : watchdog ? "LINK WATCHDOG STOP"
                 : live ? "MOTION ENABLED"
-                : "HOLD TO ENABLE MOTION";
+                : immersive ? "HOLD TO ENABLE MOTION"
+                : "HOLD A MOVE KEY TO RUN";
 
             m_EStop.EnableInClassList("dc-estop--latched", stopped);
             m_EStopButton.EnableInClassList("dc-estop__button--latched", stopped);
@@ -667,14 +824,26 @@ namespace DataCenter.UI
 
         void UpdateLink()
         {
-            m_Fps.text = $"{m_FpsSmoothed:0}";
-            m_Fps.EnableInClassList("dc-chip--warn", m_FpsSmoothed < 60f);
+            // The headset holds 72 Hz; a desktop or browser aims for 60.
+            var target = XRPlatform.isImmersive ? 72f : 60f;
+            m_Fps.text = $"{m_FpsSmoothed:0} fps";
+            m_Fps.EnableInClassList("dc-perf__value--warn", m_FpsSmoothed < target - 5f);
+            if (m_FrameTime != null)
+                m_FrameTime.text = $"{1000f / Mathf.Max(1f, m_FpsSmoothed):0.0} ms";
+            if (m_FpsGraph != null)
+            {
+                m_FpsGraph.guide = target;
+                m_FpsGraph.Push(m_FpsSmoothed);
+            }
 
             if (m_Operator == null || m_Operator.link == null || m_Operator.link.transport == null)
                 return;
 
             var stats = m_Operator.link.transport.stats;
             m_Latency.text = stats.delivered > 0 ? $"{stats.averageLatencyMs:0} ms" : "-- ms";
+            m_Latency.EnableInClassList("dc-perf__value--warn", stats.delivered > 0 && stats.averageLatencyMs > k_LatencyBudgetMs);
+            if (stats.delivered > 0)
+                m_LatencyGraph?.Push(stats.lastLatencyMs);
             m_Loss.text = $"{stats.lossRatio * 100f:0.0}%";
 
             var robot = m_Operator.robot;
@@ -734,6 +903,7 @@ namespace DataCenter.UI
 
             if (m_OrderNext != null && m_Guidance != null)
                 m_OrderNext.text = m_Guidance.instruction;
+            UpdateKeyHints();
 
             var gripper = robot.gripper;
             m_Gripper.text = gripper == null ? "-" : gripper.held != null ? "HOLDING" : gripper.isClosing ? "CLOSED" : "OPEN";

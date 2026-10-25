@@ -8,14 +8,15 @@ namespace DataCenter.Teleop
     /// </summary>
     /// <remarks>
     /// <list type="bullet">
-    /// <item>Hold <b>Space</b>: deadman. Nothing moves without it.</item>
-    /// <item><b>Left-drag the handle</b>: move the tool in the camera plane. Scroll while dragging to push or pull.</item>
-    /// <item><b>Arrows</b> / <b>R</b>, <b>F</b>: nudge the tool forward, back, left, right, up, down relative to the robot. Hold Shift for fine.</item>
-    /// <item><b>Q</b>, <b>E</b>: wrist roll. <b>Z</b>, <b>X</b>: wrist pitch.</item>
-    /// <item><b>G</b>: toggle gripper. <b>H</b>: home the arm.</item>
-    /// <item><b>W A S D</b>: drive the base. <b>Right-click</b> the floor: navigate there.</item>
+    /// <item>Every motion key is hold-to-run: holding it is the deadman, letting go stops. <b>Space</b> is a deadman on its own, for clicks.</item>
+    /// <item><b>W A S D</b>: drive the base. <b>Space + right-click</b> the floor: navigate there.</item>
+    /// <item><b>Arrows</b>: move the gripper up, down, left and right as seen on screen. <b>R</b>, <b>F</b>: reach out, pull back.
+    /// A tap moves a little; holding speeds up.</item>
+    /// <item><b>Q</b>, <b>E</b>: tilt the gripper up, down. <b>Z</b>, <b>X</b>: roll it.</item>
+    /// <item>Tap <b>Shift</b> (or <b>G</b>): grab or let go. <b>Shift + W A S D</b> moves the camera instead, see <see cref="DesktopCameraRig"/>.</item>
+    /// <item>Hold <b>H</b>: bring the arm home. <b>1</b>-<b>4</b>: take control of another robot. <b>Tab</b>: Direct / Console mode.</item>
     /// <item><b>Backspace</b>: E-Stop. <b>Shift + Backspace</b>: reset.</item>
-    /// <item><b>1</b>-<b>4</b>: take control of another robot. <b>Tab</b>: Direct / Console mode.</item>
+    /// <item><b>Left-drag the handle</b>: move the tool in the camera plane. Scroll while dragging to push or pull.</item>
     /// </list>
     /// </remarks>
     public class DesktopTeleopInput : MonoBehaviour, ITeleopInput
@@ -26,14 +27,26 @@ namespace DataCenter.Teleop
         [SerializeField, Tooltip("Layers that count as floor for point-and-click navigation.")]
         LayerMask m_FloorLayers = ~0;
 
-        [SerializeField, Tooltip("Tool nudge speed, in metres per second.")]
-        float m_NudgeSpeed = 0.25f;
+        [SerializeField, Tooltip("Tool speed when a key is first pressed, in metres per second. A tap is a fine adjustment.")]
+        float m_SlowNudgeSpeed = 0.05f;
 
-        [SerializeField, Tooltip("Tool nudge speed with Shift held, in metres per second.")]
-        float m_FineNudgeSpeed = 0.04f;
+        [SerializeField, Tooltip("Tool speed once a key has been held, in metres per second.")]
+        float m_FastNudgeSpeed = 0.3f;
+
+        [SerializeField, Tooltip("Seconds a key is held at the slow speed before speeding up.")]
+        float m_RampDelay = 0.25f;
+
+        [SerializeField, Tooltip("Seconds from slow to full speed.")]
+        float m_RampTime = 1f;
 
         [SerializeField, Tooltip("Wrist rate, in degrees per second.")]
         float m_WristRate = 60f;
+
+        [SerializeField, Tooltip("Longest press of Shift alone that counts as a tap, which grabs or lets go.")]
+        float m_ShiftTapTime = 0.35f;
+
+        [SerializeField, Tooltip("Seconds a grab tap enables motion for, so the gripper command reaches the robot. Nothing else moves meanwhile.")]
+        float m_GripPulse = 0.35f;
 
         [SerializeField, Tooltip("Push/pull per scroll notch while dragging, in metres.")]
         float m_ScrollDepthStep = 0.02f;
@@ -47,6 +60,10 @@ namespace DataCenter.Teleop
         Quaternion m_DragRotation;
         Vector2 m_RightPressPosition;
         float m_RightPressTime;
+        float m_ArmHeldSince = -1f;
+        float m_ShiftDownAt;
+        bool m_ShiftCombined;
+        float m_GripPulseUntil = -1f;
 
         /// <summary>Whether the mouse is dragging the handle. The camera rig yields scroll while this is true.</summary>
         public bool isDraggingHandle => m_Dragging;
@@ -55,6 +72,27 @@ namespace DataCenter.Teleop
 
         public string displayName => "Keyboard + Mouse";
 
+        /// <summary>
+        /// The world directions the arrow keys and R/F move the tool in: right and reach are the
+        /// camera's right and forward, flattened, so the gripper moves the way it looks on screen.
+        /// Up is always straight up. Shared with the guidance hints, so they name the right keys.
+        /// </summary>
+        public static void GetArmAxes(Camera camera, Transform robotBase, out Vector3 right, out Vector3 reach)
+        {
+            var view = camera != null ? camera.transform : robotBase;
+            right = view != null ? Vector3.ProjectOnPlane(view.right, Vector3.up) : Vector3.right;
+            reach = view != null ? Vector3.ProjectOnPlane(view.forward, Vector3.up) : Vector3.forward;
+
+            // Looking straight down flattens forward to nothing; fall back to the robot's heading.
+            if (reach.sqrMagnitude < 0.01f && robotBase != null)
+                reach = Vector3.ProjectOnPlane(robotBase.forward, Vector3.up);
+            if (right.sqrMagnitude < 0.01f)
+                right = Vector3.Cross(Vector3.up, reach);
+
+            right.Normalize();
+            reach.Normalize();
+        }
+
         public void Poll(ref TeleopIntent intent, in TeleopContext context)
         {
             var keyboard = Keyboard.current;
@@ -62,40 +100,68 @@ namespace DataCenter.Teleop
             if (keyboard == null)
                 return;
 
-            intent.deadman |= keyboard.spaceKey.isPressed;
-
             var shift = keyboard.leftShiftKey.isPressed || keyboard.rightShiftKey.isPressed;
 
-            // Base
+            // Base. With Shift held, W A S D belong to the camera.
             var drive = Vector2.zero;
-            if (keyboard.wKey.isPressed) drive.y += 1f;
-            if (keyboard.sKey.isPressed) drive.y -= 1f;
-            if (keyboard.dKey.isPressed) drive.x += 1f;
-            if (keyboard.aKey.isPressed) drive.x -= 1f;
+            if (!shift)
+            {
+                if (keyboard.wKey.isPressed) drive.y += 1f;
+                if (keyboard.sKey.isPressed) drive.y -= 1f;
+                if (keyboard.dKey.isPressed) drive.x += 1f;
+                if (keyboard.aKey.isPressed) drive.x -= 1f;
+            }
+
             intent.baseDrive += drive;
 
-            // Tool nudges, robot relative so "forward" always means toward what the robot faces.
-            var nudge = Vector3.zero;
-            if (keyboard.upArrowKey.isPressed) nudge.z += 1f;
-            if (keyboard.downArrowKey.isPressed) nudge.z -= 1f;
-            if (keyboard.rightArrowKey.isPressed) nudge.x += 1f;
-            if (keyboard.leftArrowKey.isPressed) nudge.x -= 1f;
-            if (keyboard.rKey.isPressed) nudge.y += 1f;
-            if (keyboard.fKey.isPressed) nudge.y -= 1f;
-            if (nudge != Vector3.zero && context.robotBase != null)
-                intent.armNudge += context.robotBase.TransformDirection(nudge.normalized) * (shift ? m_FineNudgeSpeed : m_NudgeSpeed);
+            // Tool, as seen on screen: arrows up, down, left, right; R and F reach out and pull back.
+            var axes = Vector3.zero;
+            if (keyboard.upArrowKey.isPressed) axes.y += 1f;
+            if (keyboard.downArrowKey.isPressed) axes.y -= 1f;
+            if (keyboard.rightArrowKey.isPressed) axes.x += 1f;
+            if (keyboard.leftArrowKey.isPressed) axes.x -= 1f;
+            if (keyboard.rKey.isPressed) axes.z += 1f;
+            if (keyboard.fKey.isPressed) axes.z -= 1f;
 
-            var wristRate = shift ? m_WristRate * 0.25f : m_WristRate;
-            if (keyboard.qKey.isPressed) intent.wristRollRate += wristRate;
-            if (keyboard.eKey.isPressed) intent.wristRollRate -= wristRate;
-            if (keyboard.zKey.isPressed) intent.wristPitchRate += wristRate;
-            if (keyboard.xKey.isPressed) intent.wristPitchRate -= wristRate;
+            if (axes != Vector3.zero)
+            {
+                // A tap moves a centimetre or so; holding speeds up, so lining up is easy and long moves are quick.
+                if (m_ArmHeldSince < 0f)
+                    m_ArmHeldSince = Time.unscaledTime;
+                var ramp = Mathf.InverseLerp(m_RampDelay, m_RampDelay + m_RampTime, Time.unscaledTime - m_ArmHeldSince);
+                var speed = Mathf.Lerp(m_SlowNudgeSpeed, m_FastNudgeSpeed, ramp * ramp);
 
-            if (keyboard.gKey.wasPressedThisFrame)
+                GetArmAxes(context.camera, context.robotBase, out var right, out var reach);
+                var direction = right * axes.x + Vector3.up * axes.y + reach * axes.z;
+                intent.armNudge += direction.normalized * speed;
+            }
+            else
+            {
+                m_ArmHeldSince = -1f;
+            }
+
+            var wrist = false;
+            if (keyboard.qKey.isPressed) { intent.wristPitchRate -= m_WristRate; wrist = true; }
+            if (keyboard.eKey.isPressed) { intent.wristPitchRate += m_WristRate; wrist = true; }
+            if (keyboard.zKey.isPressed) { intent.wristRollRate += m_WristRate; wrist = true; }
+            if (keyboard.xKey.isPressed) { intent.wristRollRate -= m_WristRate; wrist = true; }
+
+            // Homing moves the arm, so it is hold-to-run too: hold H until the arm is home.
+            var home = keyboard.hKey.isPressed;
+            intent.homeArm |= home;
+
+            // A grab is a tap, with nothing to hold, so it enables motion briefly: commands only
+            // reach the robot while the deadman is held. The fingers finish closing by themselves.
+            if (keyboard.gKey.wasPressedThisFrame || ShiftTapped(keyboard))
+            {
                 intent.gripper = GripperIntent.Toggle;
+                m_GripPulseUntil = Time.unscaledTime + m_GripPulse;
+            }
 
-            if (keyboard.hKey.wasPressedThisFrame)
-                intent.homeArm = true;
+            // Hold-to-run, as on the Quest: holding any motion key is the deadman. Space still is,
+            // for point-and-click moves that have no key to hold.
+            intent.deadman |= keyboard.spaceKey.isPressed || drive != Vector2.zero || axes != Vector3.zero || wrist || home || m_Dragging
+                || Time.unscaledTime < m_GripPulseUntil;
 
             // 1-4 switch robots, matching the order of the fleet list.
             if (keyboard.digit1Key.wasPressedThisFrame) intent.selectRobot = 1;
@@ -116,6 +182,36 @@ namespace DataCenter.Teleop
 
             if (mouse != null && context.camera != null)
                 PollMouse(mouse, ref intent, context);
+        }
+
+        /// <summary>
+        /// A quick press and release of either Shift with nothing else pressed. Shift held with
+        /// another key (W A S D for the camera, Backspace for reset) is a modifier, not a tap.
+        /// </summary>
+        bool ShiftTapped(Keyboard keyboard)
+        {
+            var left = keyboard.leftShiftKey;
+            var right = keyboard.rightShiftKey;
+            if (left.wasPressedThisFrame || right.wasPressedThisFrame)
+            {
+                m_ShiftDownAt = Time.unscaledTime;
+                m_ShiftCombined = false;
+            }
+
+            if ((left.isPressed || right.isPressed) && !m_ShiftCombined)
+            {
+                foreach (var key in keyboard.allKeys)
+                {
+                    if (key != null && key.isPressed && key != left && key != right)
+                    {
+                        m_ShiftCombined = true;
+                        break;
+                    }
+                }
+            }
+
+            var released = (left.wasReleasedThisFrame || right.wasReleasedThisFrame) && !left.isPressed && !right.isPressed;
+            return released && !m_ShiftCombined && Time.unscaledTime - m_ShiftDownAt <= m_ShiftTapTime;
         }
 
         void PollMouse(Mouse mouse, ref TeleopIntent intent, in TeleopContext context)

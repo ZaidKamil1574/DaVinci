@@ -133,6 +133,16 @@ namespace DataCenter.Editor
         }
 
         const string StaticHostOutput = "Builds/WebGL-StaticHost";
+
+        // The WebXR template's footer (logos, build title, VR and AR buttons) covers the bottom of
+        // the HUD. On the hosted page keep only the VR button, as a pill in the middle of the HUD's
+        // top bar, shown only when the browser can enter VR.
+        const string PageStyle = @"<style>
+      #unity-footer { position: fixed; top: 8px; bottom: auto; left: 50%; transform: translateX(-50%); width: auto; margin: 0; line-height: normal; pointer-events: none; }
+      #unity-webgl-logo, #unity-webxr-link, #unity-build-title, #unity-fullscreen-button, #enterar { display: none !important; }
+      #entervr { pointer-events: auto; float: none !important; width: auto !important; height: auto !important; padding: 6px 16px; border-radius: 999px; background-color: #19d3ff !important; color: #061018; font: 700 12px/1.2 system-ui, sans-serif; letter-spacing: 1px; cursor: pointer; }
+      #entervr:disabled { display: none !important; }
+    </style>";
         const long StaticHostSizeLimit = 20L * 1024 * 1024;
 
         /// <summary>Renames the compressed build files to .bin and points the page at them.</summary>
@@ -149,6 +159,10 @@ namespace DataCenter.Editor
             }
 
             html = html.Replace("<title>Unity WebGL Player | " + ProductName + "</title>", "<title>Data Center Teleop Simulator</title>");
+            html = html.Replace("<meta name=\"description\" content=\"\">",
+                "<meta name=\"description\" content=\"Teleoperate data center robots in the browser, or in VR on a Meta Quest.\">");
+            html = html.Replace(">VR</button>", ">ENTER VR</button>");
+            html = html.Replace("</head>", PageStyle + "\n  </head>");
             File.WriteAllText(page, html);
 
             long bytes = 0;

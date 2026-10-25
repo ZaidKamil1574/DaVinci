@@ -229,17 +229,26 @@
 
 /* ---------- Work orders ---------- */
 
+/* Compact: the order id is the card title, stats sit on one line. */
+.dc-order {
+    padding: var(--dc-space-2) var(--dc-space-3);
+}
+
+.dc-order > .dc-panel__header {
+    margin-bottom: var(--dc-space-1);
+}
+
 .dc-order__id {
-    font-size: var(--dc-font-xs);
+    font-size: var(--dc-font-sm);
     color: var(--dc-accent);
     -unity-font-style: bold;
     letter-spacing: 1px;
 }
 
 .dc-order__summary {
-    font-size: var(--dc-font-md);
+    font-size: var(--dc-font-sm);
     white-space: normal;
-    margin: var(--dc-space-1) 0 var(--dc-space-2) 0;
+    margin-bottom: var(--dc-space-2);
 }
 
 .dc-order__endpoint {
@@ -247,34 +256,49 @@
     align-items: center;
     background-color: var(--dc-surface-sunken);
     border-radius: var(--dc-radius-1);
-    padding: var(--dc-space-2);
-    margin-bottom: var(--dc-space-1);
+    padding: 3px var(--dc-space-2);
+    margin-bottom: 2px;
 }
 
 .dc-order__endpoint-label {
-    width: 40px;
+    width: 36px;
     color: var(--dc-text-muted);
     font-size: var(--dc-font-xs);
 }
 
 .dc-order__endpoint-port {
     -unity-font-style: bold;
+    font-size: var(--dc-font-xs);
     flex-grow: 1;
 }
 
 .dc-order__stats {
     flex-direction: row;
     justify-content: space-between;
+    align-items: center;
     margin-top: var(--dc-space-2);
 }
 
 .dc-order__stat {
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
+}
+
+.dc-order__stat > .dc-label-muted {
+    margin-right: var(--dc-space-1);
 }
 
 .dc-order__stat-value {
-    font-size: var(--dc-font-lg);
+    font-size: var(--dc-font-sm);
     -unity-font-style: bold;
+}
+
+.dc-order__progress {
+    margin-top: var(--dc-space-1);
+}
+
+.dc-order__queue-title {
+    margin-top: var(--dc-space-2);
 }
 
 .dc-order-row {
@@ -416,7 +440,7 @@
     right: 136px;
     bottom: var(--dc-space-4);
     width: 340px;
-    height: 250px;
+    height: 212px;
 }
 
 .dc-minimap-host {
@@ -441,35 +465,123 @@
     -unity-font-style: bold;
 }
 
-/* ---------- Help ---------- */
+/* ---------- Controls panel ---------- */
 
+/* Between the fleet column and the minimap, above the proximity and deadman pills. */
 .dc-help {
     position: absolute;
-    left: var(--dc-space-3);
-    bottom: var(--dc-space-3);
-    width: var(--dc-column-left);
+    left: 304px;
+    right: 488px;
+    bottom: 104px;
+    padding: var(--dc-space-2) var(--dc-space-3);
+}
+
+.dc-help > .dc-panel__header {
+    margin-bottom: var(--dc-space-1);
+}
+
+.dc-help__hint {
+    flex-grow: 1;
+    margin-left: var(--dc-space-3);
+}
+
+.dc-help__body {
+    flex-direction: row;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}
+
+.dc-help--collapsed .dc-help__body,
+.dc-help--collapsed .dc-help__hint {
+    display: none;
+}
+
+.dc-help--collapsed {
+    left: auto;
+    right: 488px;
+}
+
+.dc-help--collapsed .dc-panel__header {
+    margin-bottom: 0;
+}
+
+.dc-help__group {
+    margin-right: var(--dc-space-2);
+}
+
+.dc-help__group-title {
+    color: var(--dc-accent);
+    font-size: var(--dc-font-xs);
+    -unity-font-style: bold;
+    letter-spacing: 1px;
+    margin-bottom: var(--dc-space-1);
 }
 
 .dc-help__row {
     flex-direction: row;
+    align-items: center;
     margin-bottom: 2px;
 }
 
-.dc-help__key {
-    width: 96px;
-    color: var(--dc-accent);
+.dc-help__keys {
+    flex-direction: row;
+    align-items: center;
+    margin-right: var(--dc-space-1);
+}
+
+.dc-help__plus {
+    color: var(--dc-text-muted);
     font-size: var(--dc-font-xs);
-    -unity-font-style: bold;
+    margin: 0 2px 0 -1px;
 }
 
 .dc-help__action {
-    color: var(--dc-text-muted);
+    color: var(--dc-text);
     font-size: var(--dc-font-xs);
     flex-shrink: 1;
 }
 
-.dc-help--collapsed .dc-help__body {
-    display: none;
+/* A key cap: raised, with a heavier bottom edge, so it reads as a key at a glance. */
+.dc-key {
+    min-width: 20px;
+    padding: 1px 5px;
+    margin-right: 3px;
+    border-radius: var(--dc-radius-1);
+    border-width: 1px;
+    border-bottom-width: 2px;
+    border-color: var(--dc-border-strong);
+    background-color: var(--dc-surface-raised);
+    color: var(--dc-text);
+    font-size: var(--dc-font-xs);
+    -unity-font-style: bold;
+    -unity-text-align: middle-center;
+}
+
+/* Live key hints under the NEXT step. */
+.dc-keys {
+    flex-direction: row;
+    flex-wrap: wrap;
+    margin-bottom: var(--dc-space-2);
+}
+
+.dc-keys__item {
+    flex-direction: row;
+    align-items: center;
+    padding: 2px var(--dc-space-2) 2px 2px;
+    margin: 0 var(--dc-space-1) var(--dc-space-1) 0;
+    border-radius: var(--dc-radius-1);
+    background-color: var(--dc-accent-dim);
+}
+
+.dc-keys__item .dc-key {
+    border-color: var(--dc-accent);
+    color: var(--dc-accent);
+}
+
+.dc-keys__action {
+    font-size: var(--dc-font-sm);
+    color: var(--dc-text);
+    margin-left: 2px;
 }
 
 /* ---------- Next step guidance ---------- */
@@ -497,6 +609,65 @@
     flex-shrink: 1;
     white-space: normal;
     font-size: var(--dc-font-sm);
+}
+
+/* ---------- Link and performance ---------- */
+
+/* A slim card under the top bar, centred: two live graphs and the link numbers. */
+.dc-perf {
+    position: absolute;
+    top: 52px;
+    left: 50%;
+    translate: -50% 0;
+    flex-direction: row;
+    align-items: center;
+    padding: var(--dc-space-1) var(--dc-space-3);
+}
+
+.dc-perf__metric {
+    width: 78px;
+}
+
+.dc-perf__value {
+    font-size: var(--dc-font-md);
+    -unity-font-style: bold;
+}
+
+.dc-perf__value--warn {
+    color: var(--dc-warn);
+}
+
+.dc-perf__graph {
+    width: 110px;
+    height: 30px;
+    border-radius: var(--dc-radius-1);
+    background-color: var(--dc-surface-sunken);
+}
+
+.dc-perf__graph .dc-sparkline {
+    flex-grow: 1;
+    margin: 3px;
+    --sparkline-guide: var(--dc-border-strong);
+}
+
+.dc-perf__graph--latency .dc-sparkline {
+    --sparkline-line: var(--dc-accent);
+}
+
+.dc-perf__graph--fps .dc-sparkline {
+    --sparkline-line: var(--dc-ok);
+}
+
+.dc-perf__divider {
+    width: 1px;
+    height: 30px;
+    margin: 0 var(--dc-space-3);
+    background-color: var(--dc-border);
+}
+
+.dc-perf__extra .dc-stat__value {
+    font-size: var(--dc-font-xs);
+    min-width: 40px;
 }
 
 /* ---------- Utility ---------- */
@@ -671,7 +842,7 @@
 
 .dc-toasts {
     position: absolute;
-    top: 56px;
+    top: 118px;
     left: 50%;
     translate: -50% 0;
     width: 460px;

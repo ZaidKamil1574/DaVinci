@@ -74,19 +74,19 @@ namespace DataCenter.Teleop
                 {
                     case Step.Deadman:
                         return vr ? "Squeeze and hold a GRIP for a second. Every control is hold-to-run: let go and the robot stops."
-                            : "Hold SPACE. That is the deadman: nothing moves without it.";
+                            : "Hold SPACE for a second. Every key is hold-to-run: hold it to move, let go and the robot stops.";
                     case Step.Grab:
                         return vr ? "Push the right stick to move the gripper, or grip the cyan handle and move your hand. The arm follows."
-                            : "Keep holding SPACE and drag the cyan handle (or use the arrow keys). The arm follows.";
+                            : "Move the gripper with the arrow keys (R / F to reach out and back). Tap for small moves, hold for big ones.";
                     case Step.Pick:
                         return vr ? "Put the gripper over a blue plug on the cart and hold L2 (left trigger) to close."
-                            : "Put the gripper over a blue plug on the cart (R/F for height) and press G to close.";
+                            : "Put the gripper on a blue plug on the cart (follow the keys under the marker) and tap SHIFT to grab it.";
                     case Step.Insert:
                         return "Bring it to training port 1 (blinking cyan), square it up and open the gripper to seat it.";
                     case Step.EStop:
                         return vr ? "Hit the E-STOP: X on the left controller, or the red button." : "Hit the E-STOP: BACKSPACE, or the red button.";
                     case Step.Reset:
-                        return vr ? "Let go of the grip and sticks, then press X to reset." : "Let go of SPACE, then press SHIFT + BACKSPACE to reset.";
+                        return vr ? "Let go of the grip and sticks, then press X to reset." : "Let go of every key, then press SHIFT + BACKSPACE to reset.";
                     case Step.Done:
                         return $"Tutorial complete in {Mathf.FloorToInt(elapsed)}s. You are cleared to operate.";
                     default:

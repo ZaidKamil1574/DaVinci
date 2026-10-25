@@ -69,6 +69,12 @@ namespace DataCenter.Tasks
         /// <summary>Whether insertion assist is on. Shared by every connector; toggled from the HUD.</summary>
         public static bool insertionAssist { get; set; } = true;
 
+        /// <summary>Distance from the target port at which assist takes over, in metres.</summary>
+        public float assistSeatRadius => m_AssistSeatRadius;
+
+        /// <summary>How far off the port axis the plug may point for assist to insert it, in degrees.</summary>
+        public float assistSeatAngle => m_AssistSeatAngle;
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetStatics() => insertionAssist = true;
 
