@@ -227,6 +227,51 @@ namespace DataCenter.Tests
         }
 
         [UnityTest]
+        public IEnumerator InsertionAssistSeatsPlugNearTargetWithoutRelease()
+        {
+            CableConnector.insertionAssist = true;
+            var from = PortSocket.Find(FromPort);
+            var end = VerletCable.Find("A-C01").endA;
+            yield return PickUp(end);
+
+            // Four centimetres out and 30 degrees off the port axis: far too sloppy for a manual
+            // insertion, close enough for assist. The gripper stays closed throughout.
+            var skewed = Quaternion.AngleAxis(30f, Vector3.up) * Quaternion.LookRotation(from.socket.forward, Vector3.up);
+            m_Input.next.deadman = true;
+            m_Input.next.hasArmPose = true;
+            m_Input.next.armPose = new Pose(from.socket.position - from.socket.forward * 0.04f, skewed);
+            yield return WaitUntil(() => from.occupant == end, 8f, "assist to seat the plug");
+
+            Assert.That(end.state, Is.EqualTo(CableConnector.ConnectorState.Seated));
+            Assert.That(m_Robot.gripper.held, Is.Null, "Gripper still holds the plug after assist seated it");
+            yield return new WaitForSeconds(0.3f);
+            Assert.That(m_Operator.gripperTarget, Is.LessThan(0.5f), "Gripper was not opened after the assisted insertion");
+        }
+
+        [UnityTest]
+        public IEnumerator NoInsertionAssistWhenSwitchedOff()
+        {
+            CableConnector.insertionAssist = false;
+            try
+            {
+                var from = PortSocket.Find(FromPort);
+                var end = VerletCable.Find("A-C01").endA;
+                yield return PickUp(end);
+
+                var skewed = Quaternion.AngleAxis(30f, Vector3.up) * Quaternion.LookRotation(from.socket.forward, Vector3.up);
+                yield return MoveTool(from.socket.position - from.socket.forward * 0.04f, skewed, 0.006f);
+                yield return new WaitForSeconds(0.5f);
+
+                Assert.That(from.isOccupied, Is.False, "Plug seated with assist off");
+                Assert.That(end.state, Is.EqualTo(CableConnector.ConnectorState.Held));
+            }
+            finally
+            {
+                CableConnector.insertionAssist = true;
+            }
+        }
+
+        [UnityTest]
         public IEnumerator HomesToReadyPose()
         {
             var expected = m_Robot.arm.baseFrame.TransformPoint(m_Robot.readyPosition);

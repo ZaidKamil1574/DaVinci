@@ -152,9 +152,12 @@ namespace DataCenter.UI
             {
                 m_TargetPort = nextPort;
                 var step = endsDone * 2 + 2;
-                Set(GuidanceKind.Plug, vr
-                    ? $"Step {step}/4: Plug into {nextPort.portId}. Line the plug up with the green line (R2 + right stick to turn it), push it in, then let go of L2."
-                    : $"Step {step}/4: Plug into {nextPort.portId}. Line the plug up with the green line (Q E Z X to turn it), push it in, then press G to open.",
+                var plugText = CableConnector.insertionAssist
+                    ? $"Step {step}/4: Bring the plug to {nextPort.portId}. Within a few centimetres, roughly pointing at it, it lines up and plugs in by itself."
+                    : vr
+                        ? $"Step {step}/4: Plug into {nextPort.portId}. Line the plug up with the green line (R2 + right stick to turn it), push it in, then let go of L2."
+                        : $"Step {step}/4: Plug into {nextPort.portId}. Line the plug up with the green line (Q E Z X to turn it), push it in, then press G to open.";
+                Set(GuidanceKind.Plug, plugText,
                     nextPort.socket, k_Plug);
                 m_Label.text = $"{step} · PLUG IN\n<size=70%>{nextPort.portId}</size>";
                 return;

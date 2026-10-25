@@ -5,13 +5,23 @@ namespace DataCenter.Tasks
 {
     /// <summary>
     /// One end of a cable. The robot gripper picks it up, carries it to a port, and seats it by
-    /// opening the gripper with the tip inside the port's capture zone.
+    /// opening the gripper with the tip inside the port's capture zone, or, with insertion assist,
+    /// by bringing it near the port the work order wants.
     /// </summary>
     /// <remarks>
+    /// <para>
     /// Release-to-seat mirrors how the Da Vinci arm docked: letting go inside the port is what
     /// commits the insertion. While held, the nearest port is checked every frame so the operator
     /// gets a white "ready" LED, or a red flash and buzz for the wrong connector type, before
     /// committing.
+    /// </para>
+    /// <para>
+    /// <b>Insertion assist</b> is shared autonomy for the last few centimetres: the operator does the
+    /// coarse move, and once the plug is close to the work order's target port and pointing roughly
+    /// at it, the robot aligns and inserts it by itself, as a real robot would finish a peg-in-hole
+    /// with its own force-guided routine. It only engages for the port the order asks for and the
+    /// right connector type, so it removes fiddliness without removing the chance to make a mistake.
+    /// </para>
     /// </remarks>
     [RequireComponent(typeof(Rigidbody))]
     public class CableConnector : MonoBehaviour, IGrippable
@@ -20,6 +30,9 @@ namespace DataCenter.Tasks
         {
             Free,
             Held,
+
+            /// <summary>Insertion assist is aligning and pushing the plug into a port.</summary>
+            Seating,
             Seated,
         }
 
@@ -38,7 +51,30 @@ namespace DataCenter.Tasks
         [SerializeField, Tooltip("Label shown in the UI, for example \"Cable 01 end A\".")]
         string m_Label = "Connector";
 
-        static readonly Collider[] s_Overlap = new Collider[16];
+        [Header("Insertion assist")]
+        [SerializeField, Tooltip("Distance from the target port at which the port LED shows the plug is about to snap, in metres.")]
+        float m_AssistPreviewRadius = 0.08f;
+
+        [SerializeField, Tooltip("Distance from the target port at which assist takes over and inserts, in metres.")]
+        float m_AssistSeatRadius = 0.06f;
+
+        [SerializeField, Range(10f, 90f), Tooltip("How far off the port axis the plug may point and still be inserted by assist, in degrees.")]
+        float m_AssistSeatAngle = 50f;
+
+        [SerializeField, Tooltip("Time assist takes to align and push the plug home, in seconds.")]
+        float m_AssistSeatDuration = 0.3f;
+
+        static readonly Collider[] s_Overlap = new Collider[48];
+
+        /// <summary>Whether insertion assist is on. Shared by every connector; toggled from the HUD.</summary>
+        public static bool insertionAssist { get; set; } = true;
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetStatics() => insertionAssist = true;
+
+        PortSocket m_SeatingPort;
+        Pose m_SeatFrom;
+        float m_SeatProgress;
 
         Rigidbody m_Body;
         ConnectorState m_State;
@@ -62,7 +98,7 @@ namespace DataCenter.Tasks
         /// <summary>The port the held connector would seat in if released now, or null.</summary>
         public PortSocket hoveredPort => m_Hovered;
 
-        public bool canBeGripped => m_State != ConnectorState.Held;
+        public bool canBeGripped => m_State != ConnectorState.Held && m_State != ConnectorState.Seating;
 
         void Awake()
         {
@@ -100,6 +136,14 @@ namespace DataCenter.Tasks
             m_Holder = null;
             transform.SetParent(null, true);
 
+            // Insertion assist let go on purpose: carry on into the port from here.
+            if (m_State == ConnectorState.Seating)
+            {
+                m_SeatFrom = new Pose(transform.position, transform.rotation);
+                m_SeatProgress = 0f;
+                return;
+            }
+
             var target = m_Hovered;
             SetHovered(null);
 
@@ -136,6 +180,7 @@ namespace DataCenter.Tasks
             if (m_Holder != null)
                 m_Holder.Release();
 
+            m_SeatingPort = null;
             if (m_Seated != null)
             {
                 var port = m_Seated;
@@ -153,7 +198,16 @@ namespace DataCenter.Tasks
 
         void Update()
         {
+            if (m_State == ConnectorState.Seating)
+            {
+                AnimateAssistedSeat();
+                return;
+            }
+
             if (m_State != ConnectorState.Held)
+                return;
+
+            if (insertionAssist && TryAssist())
                 return;
 
             var nearest = FindNearestPort();
@@ -184,6 +238,96 @@ namespace DataCenter.Tasks
                 default:
                     SetHovered(null);
                     break;
+            }
+        }
+
+        /// <summary>
+        /// Looks for the work order's target port near the tip. Previews it when in range, and hands
+        /// over to the automatic insertion when close and roughly aligned.
+        /// </summary>
+        bool TryAssist()
+        {
+            var count = Physics.OverlapSphereNonAlloc(tip.position, m_AssistPreviewRadius, s_Overlap, m_PortLayers, QueryTriggerInteraction.Collide);
+            PortSocket target = null;
+            var targetDistance = float.MaxValue;
+            for (var i = 0; i < count; i++)
+            {
+                var port = s_Overlap[i].GetComponentInParent<PortSocket>();
+                if (port == null || !port.isWorkOrderTarget || port.isOccupied || port.type != m_Type)
+                    continue;
+
+                var distance = port.DistanceTo(this);
+                if (distance < targetDistance)
+                {
+                    targetDistance = distance;
+                    target = port;
+                }
+            }
+
+            if (target == null)
+                return false;
+
+            m_LastRejected = null;
+            var angle = Vector3.Angle(tip.forward, target.socket.forward);
+            if (targetDistance <= m_AssistSeatRadius && angle <= m_AssistSeatAngle && m_Holder != null)
+            {
+                SetHovered(null);
+                m_SeatingPort = target;
+                m_State = ConnectorState.Seating;
+
+                // Hand the plug over from the gripper to the insertion routine. OnReleased sees the
+                // Seating state and starts the motion from wherever the plug is now.
+                m_Holder.Release();
+                FeedbackEvent.Play(FeedbackCue.Grip, tip.position);
+                return true;
+            }
+
+            SetHovered(target);
+            return true;
+        }
+
+        /// <summary>
+        /// Moves the plug onto the port's axis a few centimetres out, square to it, then straight in,
+        /// like a peg-in-hole routine, and seats it at the end.
+        /// </summary>
+        void AnimateAssistedSeat()
+        {
+            var port = m_SeatingPort;
+            if (port == null || port.isOccupied)
+            {
+                // The port was taken or the scene reset mid-move: drop the plug.
+                m_SeatingPort = null;
+                m_State = ConnectorState.Free;
+                m_Body.isKinematic = false;
+                return;
+            }
+
+            m_SeatProgress = Mathf.Min(1f, m_SeatProgress + Time.deltaTime / Mathf.Max(0.05f, m_AssistSeatDuration));
+
+            // Where the root must be for the tip to sit on a given socket pose.
+            var tipLocalPosition = transform.InverseTransformPoint(tip.position);
+            var tipLocalRotation = Quaternion.Inverse(transform.rotation) * tip.rotation;
+            var seatedRotation = port.socket.rotation * Quaternion.Inverse(tipLocalRotation);
+            var seated = port.socket.position - seatedRotation * tipLocalPosition;
+            var approach = seated - port.socket.forward * 0.03f;
+
+            // First 60%: align onto the axis. Last 40%: push straight in.
+            const float alignShare = 0.6f;
+            if (m_SeatProgress < alignShare)
+            {
+                var t = Mathf.SmoothStep(0f, 1f, m_SeatProgress / alignShare);
+                transform.SetPositionAndRotation(Vector3.Lerp(m_SeatFrom.position, approach, t), Quaternion.Slerp(m_SeatFrom.rotation, seatedRotation, t));
+            }
+            else
+            {
+                var t = Mathf.SmoothStep(0f, 1f, (m_SeatProgress - alignShare) / (1f - alignShare));
+                transform.SetPositionAndRotation(Vector3.Lerp(approach, seated, t), seatedRotation);
+            }
+
+            if (m_SeatProgress >= 1f)
+            {
+                m_SeatingPort = null;
+                SeatInto(port);
             }
         }
 

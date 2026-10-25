@@ -28,6 +28,7 @@
                 </ui:VisualElement>
             </ui:VisualElement>
             <ui:VisualElement class="dc-topbar__group">
+                <ui:Button name="assist-button" text="ASSIST ON" class="dc-button dc-button--active" />
                 <ui:Button name="tutorial-button" text="TUTORIAL" class="dc-button" />
                 <ui:Button name="link-button" text="LINK" class="dc-button" />
                 <ui:Button name="mode-direct" text="DIRECT" class="dc-button dc-button--active" />

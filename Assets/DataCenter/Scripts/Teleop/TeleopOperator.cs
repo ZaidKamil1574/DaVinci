@@ -57,6 +57,7 @@ namespace DataCenter.Teleop
         double m_NextSendAt;
         Pose m_CommandedLocal;
         float m_GripperTarget;
+        bool m_WasHolding;
         TeleopIntent m_Intent;
         ControlMode m_Mode;
         string m_ActiveInputName = "None";
@@ -278,6 +279,13 @@ namespace DataCenter.Teleop
 
             if (motionEnabled)
                 ApplyArmIntent(frame, Time.deltaTime);
+
+            // Insertion assist takes the plug out of a closed gripper. Open the fingers to match, so the
+            // next pick starts from an open gripper instead of needing an open-then-close.
+            var holding = m_Robot.gripper != null && m_Robot.gripper.held != null;
+            if (m_WasHolding && !holding && m_GripperTarget > 0.5f)
+                m_GripperTarget = 0f;
+            m_WasHolding = holding;
 
             switch (m_Intent.gripper)
             {

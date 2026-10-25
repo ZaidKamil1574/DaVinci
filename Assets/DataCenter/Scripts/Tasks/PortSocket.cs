@@ -89,6 +89,9 @@ namespace DataCenter.Tasks
         public CableConnector occupant => m_Occupant;
         public bool isOccupied => m_Occupant != null;
 
+        /// <summary>Whether the active work order wants a cable in this port (its LED is blinking cyan).</summary>
+        public bool isWorkOrderTarget => m_BaseIndicator == PortIndicator.Target;
+
         /// <summary>Whether a seated connector has finished negotiating.</summary>
         public bool linkUp => m_Occupant != null && Time.time >= m_NegotiateUntil;
 
@@ -123,12 +126,14 @@ namespace DataCenter.Tasks
             if (connector == null)
                 return InsertCheck.TooFar;
 
-            if (m_Occupant != null && m_Occupant != connector)
-                return InsertCheck.Occupied;
-
+            // Distance first: passing close to an occupied neighbour on the way to the right port is
+            // not an attempt to plug into it, and must not count as an error.
             var radius = m_Type != null ? m_Type.captureRadius : 0.02f;
             if (Vector3.Distance(connector.tip.position, socket.position) > radius)
                 return InsertCheck.TooFar;
+
+            if (m_Occupant != null && m_Occupant != connector)
+                return InsertCheck.Occupied;
 
             // Type is checked after distance on purpose: the operator should only hear "wrong type"
             // when they are actually trying to plug into this port.

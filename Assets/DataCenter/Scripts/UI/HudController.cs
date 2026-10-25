@@ -109,6 +109,12 @@ namespace DataCenter.UI
             m_EStopButton.clicked += OnEStop;
             m_Root.Q<Button>("estop-reset").clicked += OnReset;
             m_Root.Q<Button>("help-toggle").clicked += ToggleHelp;
+            var assist = m_Root.Q<Button>("assist-button");
+            if (assist != null)
+            {
+                assist.clicked += () => SetAssist(!CableConnector.insertionAssist);
+                RefreshAssistButton();
+            }
 
             EventBus.Subscribe<ToastEvent>(OnToast);
             EventBus.Subscribe<WorkOrdersChangedEvent>(OnOrdersChanged);
@@ -458,6 +464,26 @@ namespace DataCenter.UI
             row.Add(keyLabel);
             row.Add(actionLabel);
             parent.Add(row);
+        }
+
+        /// <summary>Insertion assist on or off for every connector. Shown on the HUD button.</summary>
+        void SetAssist(bool on)
+        {
+            CableConnector.insertionAssist = on;
+            RefreshAssistButton();
+            ToastEvent.Show(on
+                ? "Insertion assist on: bring the plug near the target port and it plugs in by itself"
+                : "Insertion assist off: line the plug up and open the gripper to seat it");
+        }
+
+        void RefreshAssistButton()
+        {
+            var button = m_Root.Q<Button>("assist-button");
+            if (button == null)
+                return;
+
+            button.text = CableConnector.insertionAssist ? "ASSIST ON" : "ASSIST OFF";
+            button.EnableInClassList("dc-button--active", CableConnector.insertionAssist);
         }
 
         void ToggleHelp()

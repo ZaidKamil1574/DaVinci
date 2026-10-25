@@ -101,6 +101,16 @@ straight out of the target port to line the plug up with. The same step, with th
 press, is the "NEXT" line on the HUD's work-order panel and on the VR dashboard. Picking up the
 wrong cable shows a warning.
 
+### Insertion assist
+
+Insertion assist (on by default, **ASSIST** button on the HUD) handles the last few centimetres.
+Bring a plug within about 6 cm of the port the work order is asking for, pointing roughly at it
+(within 50°), and the robot lines it up and pushes it home by itself; the gripper then opens.
+From about 8 cm the port LED turns white to show it is about to snap. Assist only works for the
+target port and the right connector type, so plugging into the wrong port or offering the wrong
+cable still needs, and is still scored as, a deliberate manual insertion. With assist off,
+insertion is fully manual: line up within 2 cm and 25° and open the gripper.
+
 ### Tutorial
 
 Press **TUTORIAL** in the top bar or on the wrist menu. Sixty seconds in the Staging training
