@@ -533,6 +533,14 @@ namespace DataCenter.Editor
             var instance = (GameObject)PrefabUtility.InstantiatePrefab(model, bay);
             instance.transform.localPosition = Vector3.zero;
 
+            // The model is 134k triangles; drawing it again into the shadow map took the closest
+            // view to 232k in the first profile. Its own geometry carries the detail, so no shadow.
+            foreach (var renderer in instance.GetComponentsInChildren<Renderer>(true))
+            {
+                renderer.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+                PrefabUtility.RecordPrefabInstancePropertyModifications(renderer);
+            }
+
             // Sit it on the floor and centre it on the bay origin, whatever the FBX pivot is.
             var renderers = instance.GetComponentsInChildren<Renderer>();
             if (renderers.Length == 0)

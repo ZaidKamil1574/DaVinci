@@ -171,9 +171,11 @@ namespace DataCenter.Editor
 
             // ---------- Static flags, then navigation
             MarkStatic(environment.gameObject);
+            TrimShadowCasters(environment);
             BakeNavMesh(environment);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
+            BakeOcclusion(scene);
             AssetDatabase.SaveAssets();
 
             var triangles = CountTriangles(environment) + CountTriangles(robots) + CountTriangles(cables);
@@ -388,6 +390,48 @@ namespace DataCenter.Editor
             }
         }
 
+        /// <summary>
+        /// Keeps the shadow pass to what reads as shadow at operator height: racks, cabinets, carts
+        /// and robots. The ceiling, walls, trays, signage and floor markings never cast a shadow an
+        /// operator would notice (and the ceiling slab would otherwise shade the whole hall from the
+        /// key light). The first profile showed 300 to 700 shadow casters per view before this.
+        /// </summary>
+        static void TrimShadowCasters(Transform environment)
+        {
+            var noShadow = new[] { "Ceiling", "Walls", "Cable Trays", "Signage", "Section Dividers", "Floor", "Aisle Tiles", "Hot Aisle Containment", "ODF Jumpers", "Busway", "Tutorial Bay", "Charging Pads" };
+            var trimmed = 0;
+            foreach (var renderer in environment.GetComponentsInChildren<Renderer>(true))
+            {
+                var t = renderer.transform;
+                var cast = true;
+                while (t != null && t != environment)
+                {
+                    if (System.Array.IndexOf(noShadow, t.name) >= 0 || t.name.StartsWith("Row Label") || t.name.StartsWith("Id Plate") || t.name.StartsWith("Edge "))
+                    {
+                        cast = false;
+                        break;
+                    }
+
+                    t = t.parent;
+                }
+
+                // Small parts inside a rack's footprint are already in its shadow.
+                var size = renderer.bounds.size;
+                if (cast && size.x < 0.05f && size.y < 0.05f)
+                    cast = false;
+
+                if (cast || renderer.shadowCastingMode == ShadowCastingMode.Off)
+                    continue;
+
+                renderer.shadowCastingMode = ShadowCastingMode.Off;
+                if (PrefabUtility.IsPartOfPrefabInstance(renderer))
+                    PrefabUtility.RecordPrefabInstancePropertyModifications(renderer);
+                trimmed++;
+            }
+
+            Debug.Log($"[Data Center] Shadow casting turned off on {trimmed} decorative renderers.");
+        }
+
         static void BakeNavMesh(Transform environment)
         {
             var surface = environment.gameObject.AddComponent<NavMeshSurface>();
@@ -401,6 +445,26 @@ namespace DataCenter.Editor
             AssetDatabase.CreateAsset(surface.navMeshData, path);
             surface.navMeshData = AssetDatabase.LoadAssetAtPath<NavMeshData>(path);
             EditorUtility.SetDirty(surface);
+        }
+
+        /// <summary>
+        /// Bakes occlusion culling. Rack rows, partitions and containment hide most of the hall from
+        /// any one aisle, so this removes a large share of draw calls before they reach the GPU.
+        /// </summary>
+        static void BakeOcclusion(UnityEngine.SceneManagement.Scene scene)
+        {
+            var started = System.DateTime.Now;
+            StaticOcclusionCulling.smallestOccluder = 1.0f;
+            StaticOcclusionCulling.smallestHole = 0.2f;
+            StaticOcclusionCulling.backfaceThreshold = 100f;
+            if (!StaticOcclusionCulling.Compute())
+            {
+                Debug.LogWarning("[Data Center] Occlusion bake failed; the scene will render without occlusion culling.");
+                return;
+            }
+
+            EditorSceneManager.SaveScene(scene, ScenePath);
+            Debug.Log($"[Data Center] Occlusion culling baked in {(System.DateTime.Now - started).TotalSeconds:0.0}s, data size {StaticOcclusionCulling.umbraDataSize / 1024f:0} KB.");
         }
 
         static long CountTriangles(Transform root)

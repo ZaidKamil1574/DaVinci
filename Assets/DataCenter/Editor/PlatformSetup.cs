@@ -24,6 +24,7 @@ namespace DataCenter.Editor
         const string WebGLOutput = "Builds/WebGL";
         const string QuestOutput = "Builds/Quest/DataCenterTeleop.apk";
 
+
         [MenuItem("Tools/Data Center/Platforms/Configure WebXR (WebGL)", false, 200)]
         public static void ConfigureWebXR()
         {
@@ -117,6 +118,9 @@ namespace DataCenter.Editor
             Debug.Log($"[Data Center] {target} build {summary.result}: {summary.totalSize / (1024f * 1024f):0.0} MB uncompressed report size, " +
                       $"{summary.totalErrors} errors, {summary.totalWarnings} warnings, {summary.totalTime.TotalSeconds:0}s -> {output}");
 
+            if (target == BuildTarget.Android && File.Exists(output))
+                Debug.Log($"[Data Center] APK size: {new FileInfo(output).Length / (1024f * 1024f):0.0} MB");
+
             if (target == BuildTarget.WebGL && Directory.Exists(output))
             {
                 long bytes = 0;
@@ -128,30 +132,43 @@ namespace DataCenter.Editor
             return summary.result == BuildResult.Succeeded;
         }
 
+        /// <summary>Batch entry: configure WebXR and build WebGL. See <see cref="BuildIsolated"/>.</summary>
+        public static void BuildWebGLBatch() =>
+            EditorApplication.Exit(BuildIsolated(BuildTarget.WebGL, WebGLOutput, ConfigureWebXR) ? 0 : 1);
+
+        /// <summary>Batch entry: build the Quest APK. See <see cref="BuildIsolated"/>.</summary>
+        public static void BuildQuestBatch() =>
+            EditorApplication.Exit(BuildIsolated(BuildTarget.Android, QuestOutput, LogQuestXRSetup) ? 0 : 1);
+
         /// <summary>
-        /// Batch entry: configure WebXR and build WebGL, then switch back to whatever target was
-        /// active so the next person to open the project is not surprised by a platform switch.
+        /// Builds the data center scene without leaving any trace on the project the Da Vinci app
+        /// ships from. For the duration of the build only, it gives the player its own name and
+        /// application id, so installing it on a Quest does not replace the Da Vinci app; afterwards
+        /// it restores those, the preloaded assets that XR build processors add and remove, and the
+        /// active build target.
         /// </summary>
-        public static void BuildWebGLBatch()
+        static bool BuildIsolated(BuildTarget target, string output, System.Action configure)
         {
+            var group = BuildPipeline.GetBuildTargetGroup(target);
+            var named = NamedBuildTarget.FromBuildTargetGroup(group);
+            var originalTarget = EditorUserBuildSettings.activeBuildTarget;
+            var originalGroup = BuildPipeline.GetBuildTargetGroup(originalTarget);
+
             // Clear what an earlier interrupted build left behind (XR, OpenXR and WebXR settings).
             PlayerSettings.SetPreloadedAssets(System.Array.FindAll(PlayerSettings.GetPreloadedAssets(),
                 asset => asset != null && !asset.GetType().FullName.Contains("XR")));
-
-            var original = EditorUserBuildSettings.activeBuildTarget;
-            var originalGroup = BuildPipeline.GetBuildTargetGroup(original);
-
-            // XR and WebXR build processors add their settings to the preloaded assets for the
-            // duration of a build and remove them after. Snapshot the list so an interrupted build
-            // cannot leave them behind in the project.
             var preloaded = PlayerSettings.GetPreloadedAssets();
-            Debug.Log($"[Data Center] Active build target before WebGL build: {original}");
+            var productName = PlayerSettings.productName;
+            var applicationId = PlayerSettings.GetApplicationIdentifier(named);
+            Debug.Log($"[Data Center] Building {target}. Active target before: {originalTarget}.");
 
             var ok = false;
             try
             {
-                ConfigureWebXR();
-                ok = Build(BuildTarget.WebGL, WebGLOutput);
+                PlayerSettings.productName = ProductName;
+                PlayerSettings.SetApplicationIdentifier(named, ApplicationId);
+                configure?.Invoke();
+                ok = Build(target, output);
             }
             catch (System.Exception e)
             {
@@ -159,13 +176,31 @@ namespace DataCenter.Editor
             }
             finally
             {
+                PlayerSettings.productName = productName;
+                PlayerSettings.SetApplicationIdentifier(named, applicationId);
                 PlayerSettings.SetPreloadedAssets(preloaded);
-                if (EditorUserBuildSettings.activeBuildTarget != original)
-                    EditorUserBuildSettings.SwitchActiveBuildTarget(originalGroup, original);
+                if (EditorUserBuildSettings.activeBuildTarget != originalTarget)
+                    EditorUserBuildSettings.SwitchActiveBuildTarget(originalGroup, originalTarget);
                 AssetDatabase.SaveAssets();
             }
 
-            EditorApplication.Exit(ok ? 0 : 1);
+            return ok;
+        }
+
+        const string ProductName = "DC Teleop";
+        const string ApplicationId = "com.zrmap.dcteleop";
+
+        /// <summary>Logs the Android XR configuration a Quest build will use, for the build record.</summary>
+        static void LogQuestXRSetup()
+        {
+            var perTarget = AssetDatabase.FindAssets("t:XRGeneralSettingsPerBuildTarget")
+                .Select(guid => AssetDatabase.LoadAssetAtPath<XRGeneralSettingsPerBuildTarget>(AssetDatabase.GUIDToAssetPath(guid)))
+                .FirstOrDefault();
+            var android = perTarget != null ? perTarget.SettingsForBuildTarget(BuildTargetGroup.Android) : null;
+            var loaders = android != null && android.Manager != null ? string.Join(", ", android.Manager.activeLoaders.Select(l => l.name)) : "none";
+            Debug.Log($"[Data Center] Quest build: loaders [{loaders}], scripting backend {PlayerSettings.GetScriptingBackend(NamedBuildTarget.Android)}, " +
+                      $"architectures {PlayerSettings.Android.targetArchitectures}, graphics {string.Join(",", PlayerSettings.GetGraphicsAPIs(BuildTarget.Android))}, " +
+                      $"min SDK {PlayerSettings.Android.minSdkVersion}.");
         }
     }
 }
