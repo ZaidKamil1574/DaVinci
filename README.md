@@ -1,136 +1,138 @@
-# Data Center Teleoperation Simulator (Unity 6 · Meta Quest · WebGL)
+# Data Center Robot Teleoperation
 
-An XR data center simulation: drive robots around a data center and complete cabling work orders
-step by step. Pick up a cable, carry it to the right rack and plug it into the right port. The
-application runs **on a Meta Quest** and **in the browser**.
+I built this to find out what it's like to remote-control robots inside a data center. You drive a
+mobile robot arm up to a rack, pick a cable off a cart and plug it into the right port, the kind of
+repetitive cabling work data centers are full of. It runs on a Meta Quest on its own (no PC
+needed once it's installed) and in a web browser.
 
-- **In the browser (WebGL):** [mzaidk.com/droyd](https://mzaidk.com/droyd)
-- **Full documentation** (architecture, all controls, tests, performance): [README_DataCenter.md](README_DataCenter.md)
+<img src="Docs/Images/quest-view.webp" alt="On the Quest: the robot arm carrying a cable to the training panel" width="800">
 
----
+*On the Quest: carrying a cable over to the training panel.*
 
-## Steps to build it for a Meta Quest headset
+You can try the browser version at [mzaidk.com/droyd](https://mzaidk.com/droyd). The full write-up,
+with the architecture, every control, the tests and performance numbers, is in
+[README_DataCenter.md](README_DataCenter.md).
 
-### What you need
+## Running it on a Quest
 
-| | |
-|---|---|
-| Headset | Meta Quest 2, 3, 3S or Pro |
-| Unity | **6000.4.0f1** with **Android Build Support** (and its OpenJDK and Android SDK & NDK Tools) |
-| Cable | A USB-C data cable from the computer to the headset |
-| Phone | The **Meta Horizon** app, signed in to the account the headset uses |
+You'll need:
 
-### 1. Get the project and open it in Unity
+- a Meta Quest 2, 3, 3S or Pro
+- Unity 6000.4.0f1 with Android Build Support (including OpenJDK and the Android SDK & NDK Tools)
+- a USB-C cable that carries data, not just charge
+- the Meta Horizon app on your phone, signed in with the same account as the headset
 
-1. Clone the repository:
+### 1. Get the project into Unity
 
-   ```bash
-   git clone https://github.com/ZaidKamil1574/Robot-Teleoperation.git
-   ```
+Clone the repo:
 
-   Or download it instead: on this page click the green **Code** button, then **Download ZIP**,
-   and unzip it.
+```bash
+git clone https://github.com/ZaidKamil1574/Robot-Teleoperation.git
+```
 
-2. Install Unity Hub if you don't have it: [Install the Unity Hub](https://docs.unity.com/en-us/hub/install-hub).
+Or grab it as a ZIP from the green **Code** button and unzip it.
 
-3. In **Unity Hub**, click **Add > Add project from disk**, pick the `Robot-Teleoperation` folder
-   and open it with Unity **6000.4.0f1**.
+If you don't have Unity Hub yet, [install it first](https://docs.unity.com/en-us/hub/install-hub).
+Then in Hub choose **Add > Add project from disk**, point it at the `Robot-Teleoperation` folder and
+open it with Unity 6000.4.0f1.
 
-   <img src="Docs/Images/hub-add-project.webp" alt="Unity Hub: Add > Add project from disk" width="800">
+<img src="Docs/Images/hub-add-project.webp" alt="Unity Hub: Add > Add project from disk" width="800">
 
-4. If Hub says Android support is missing: **Installs > 6000.4.0f1 > gear icon > Add modules >
-   Android Build Support**, and tick **OpenJDK** and **Android SDK & NDK Tools** too. When they are
-   installed, the list looks like this:
+Hub may say Android support is missing. If it does, go to **Installs**, click the gear next to
+6000.4.0f1, choose **Add modules** and tick Android Build Support along with OpenJDK and Android SDK
+& NDK Tools. Once they're installed it looks like this:
 
-   <img src="Docs/Images/hub-android-modules.png" alt="Unity Hub modules: Android Build Support, OpenJDK and Android SDK & NDK Tools installed" width="800">
+<img src="Docs/Images/hub-android-modules.png" alt="Unity Hub modules with Android Build Support, OpenJDK and Android SDK & NDK Tools installed" width="800">
 
-5. Unity opens the project. The first time, it imports everything, which takes a while. When it is
-   done it looks like this:
+The first time the project opens, Unity has to import everything, so give it a few minutes. When
+it's done you should see the data center:
 
-   <img src="Docs/Images/unity-scene.webp" alt="Unity with the DataCenter scene open" width="900">
+<img src="Docs/Images/unity-scene.webp" alt="The DataCenter scene open in Unity" width="900">
 
-   If you see an empty scene instead, open the data center: in the **Project** window go to
-   `Assets/DataCenter/Scenes` and double-click **DataCenter**.
+If you get an empty scene instead, go to `Assets/DataCenter/Scenes` in the Project window and
+double-click **DataCenter**.
 
-### 2. Put the headset in developer mode (once)
+### 2. Turn on developer mode (one time only)
 
-1. In the **Meta Horizon** app: **Menu > Devices >** your headset **> Headset settings > Developer
-   mode**, and switch it on. If it asks you to, create a free developer organization at
-   [developers.meta.com](https://developers.meta.com/horizon/) first.
-2. Restart the headset.
-3. Plug the headset into the computer, put it on and accept **Allow USB debugging** (tick
-   **Always allow from this computer**).
+On your phone, open the Meta Horizon app and go to **Menu > Devices**, pick your headset, then
+**Headset settings > Developer mode** and switch it on. It may ask you to create a developer
+organization at [developers.meta.com](https://developers.meta.com/horizon/) first. That's free and
+only takes a minute.
 
-### 3. Build and install
+Restart the headset, plug it into your computer, put it on and accept the "Allow USB debugging"
+prompt. Tick "Always allow from this computer" so it doesn't ask again.
 
-1. In Unity: **File > Build Profiles > Android > Switch Platform**. Only needed once; it takes a
-   few minutes the first time.
-2. With the headset plugged in and awake: **Tools > Data Center > Platforms > Build And Run on
-   Quest**.
+### 3. Build it to the headset
 
-   <img src="Docs/Images/tools-build-menu.png" alt="Tools > Data Center > Platforms menu with Build And Run on Quest" width="650">
+In Unity, open **File > Build Profiles**, select **Android** and click **Switch Platform**. You only
+need to do this once, but the first time takes a few minutes.
 
-   This builds only the data center scene, installs it on the headset as **DC Teleop** and starts
-   it. The first build takes about 10 minutes; later ones are faster.
+Then, with the headset plugged in and awake, go to **Tools > Data Center > Platforms > Build And
+Run on Quest**.
 
-3. When the build starts on the headset, the **Android Logcat** window shows the app's log, with
-   a timestamp and process id (PID) on every line. If it does not open by itself, use **Window >
-   Analysis > Android Logcat**.
+<img src="Docs/Images/tools-build-menu.png" alt="Tools > Data Center > Platforms menu" width="650">
 
-   <img src="Docs/Images/android-logcat.webp" alt="Android Logcat window connected to a Quest 3" width="560">
+This builds just the data center scene, installs it as DC Teleop and launches it on the headset.
+The first build takes around 10 minutes; after that it's much quicker. Next time you can start it
+straight from the headset under **Library > Unknown Sources > DC Teleop**.
 
-   White lines are normal output, so a steady stream of white means the app is running fine. A few
-   yellow warnings at start-up are normal too. Red lines are errors: if you see them, or the log
-   stops and the app closes, check [If something goes wrong](#if-something-goes-wrong).
+While it's running, the Android Logcat window streams the app's log from the headset. If it
+doesn't open by itself, you'll find it under **Window > Analysis > Android Logcat**. Every line has
+a timestamp and the app's process ID.
 
-To start the app again later, on the headset: **Library > Unknown Sources > DC Teleop**.
+<img src="Docs/Images/android-logcat.webp" alt="Android Logcat connected to a Quest 3" width="560">
 
-The XR settings (OpenXR with Meta Quest support) are already set up in the project; there is
-nothing to change.
+Mostly white lines means everything's fine, and a few yellow warnings at start-up are normal. Red
+lines are errors. If you see those, or the log stops and the app quits, have a look at the notes at
+the bottom of this page.
 
-#### Or: build an APK to install later
+There's no need to touch any XR settings; OpenXR with Meta Quest support is already set up.
 
-**Tools > Data Center > Platforms > Build Quest APK** (in the same menu as above) writes
-`Builds/Quest/DataCenterTeleop.apk`. Install it with
-[Meta Quest Developer Hub](https://developers.meta.com/horizon/documentation/unity/ts-mqdh/) (drag the
-APK onto the device), or from a terminal:
+If you'd rather have an APK to install later, use **Build Quest APK** in the same menu. It saves
+`Builds/Quest/DataCenterTeleop.apk`, which you can drag onto the headset in
+[Meta Quest Developer Hub](https://developers.meta.com/horizon/documentation/unity/ts-mqdh/) or
+install from a terminal:
 
 ```bash
 adb install -r Builds/Quest/DataCenterTeleop.apk
 ```
 
-### 4. Play
+## Playing
 
-Follow the floating marker and the **NEXT** instructions. Every movement control is hold-to-run:
-let go and the robot stops.
+Follow the floating marker and the NEXT instructions on the dashboard. The robot only moves while
+you're holding a control, and stops as soon as you let go.
 
-| Quest controller | Action |
+| Quest controller | What it does |
 |---|---|
-| Left stick | Drive the robot (also sideways) |
-| A / B | Turn the robot clockwise / anticlockwise |
-| Right stick | Move the gripper (press the stick in and push to reach forward / back) |
+| Left stick | Drive the robot (it can slide sideways too) |
+| A / B | Turn clockwise / anticlockwise |
+| Right stick | Move the gripper (click the stick in and push to reach forward or back) |
 | R2 + right stick | Rotate the wrist |
-| L2 (hold) | Close the gripper on a cable. Near the target port it plugs in by itself |
+| L2 (hold) | Grab a cable. Bring it close to the target port and it plugs itself in |
 | Right grip + right stick | Teleport and turn |
-| X | E-Stop. Press X again, hands off the controls, to reset |
-| Y | Show / hide the dashboard |
+| X | Emergency stop. Let go of everything and press X again to reset |
+| Y | Show or hide the dashboard |
 
-The controllers buzz faster as the gripper gets close to a cable or a held cable gets close to
-its port. A chime plays when you can grab (L2) and when the plug is lined up. A thud plus a buzz
-means the robot ran into a rack: it cannot drive or reach through equipment.
+The controllers buzz faster the closer the gripper gets to a cable, or a cable gets to its port.
+You'll hear a chime when you can grab and another when the plug lines up. A thud and a buzz means
+you've hit a rack; the robot can't drive or reach through equipment.
 
-Keyboard controls for the browser version are in [README_DataCenter.md](README_DataCenter.md#controls).
+Playing in the browser instead? The keyboard controls are in
+[README_DataCenter.md](README_DataCenter.md#controls). There's also an **AUTO DEMO** button in the
+top bar if you'd like to watch each robot do a job on its own first. Press any key to take over.
 
-To watch a job done for you first, press **AUTO DEMO** in the top bar (desktop or browser): each
-robot in turn picks up its cable and plugs it in. Press any key to take over.
+## If something goes wrong
 
-### If something goes wrong
-
-| Problem | Fix |
-|---|---|
-| Unity asks you to switch to Android | Do step 3.1 (**File > Build Profiles > Android > Switch Platform**) first. |
-| The headset is not found | Put the headset on and accept **Allow USB debugging**. Try another cable or port; some cables only charge. |
-| Pressing **Play** shows nothing in the headset | Play in the Editor needs Quest Link, which runs on Windows only. On a Mac, use **Build And Run on Quest**. |
-| The app closes right after starting | Build with the **Tools > Data Center** menu, not Unity's own Build And Run. The menu builds only the data center scene and clears Android build leftovers from other scenes. |
-| Red errors in Android Logcat | Note the first red line and the one before it; they usually name the problem. Then rebuild with **Build And Run on Quest**. |
-| Hub cannot find Unity 6000.4.0f1 | Install it from the [Unity download archive](https://unity.com/releases/editor/archive), with Android Build Support. |
+- **Unity asks you to switch to Android.** Do the Build Profiles step in section 3 first.
+- **The headset isn't detected.** Put it on and accept the USB debugging prompt. If that doesn't
+  help, try another cable or port; some cables only charge.
+- **You press Play and nothing shows up in the headset.** Playing from the Editor needs Quest
+  Link, which only runs on Windows. On a Mac, use Build And Run on Quest instead.
+- **The app closes right after it starts.** Build from the Tools > Data Center menu rather than
+  Unity's own Build And Run. The menu builds only the data center scene and clears out leftovers
+  from other scenes.
+- **Red errors in Logcat.** The first red line, and the one just before it, usually tell you what
+  went wrong.
+- **Hub can't find Unity 6000.4.0f1.** It's in the
+  [Unity download archive](https://unity.com/releases/editor/archive). Add Android Build Support
+  when you install it.
