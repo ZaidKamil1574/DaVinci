@@ -1,8 +1,7 @@
 # Data Center Robot Teleoperation
 
-I built this to find out what it's like to remote-control robots inside a data center. You drive a
-mobile robot arm up to a rack, pick a cable off a cart and plug it into the right port, the kind of
-repetitive cabling work data centers are full of. It runs on a Meta Quest on its own (no PC
+I built this to find out what it's like to remote control robots inside a data center. The user can drive a
+mobile robot arm up to a rack, pick a cable off a cart and plug it into the right port. It runs on a Meta Quest on its own (no PC
 needed once it's installed) and in a web browser.
 
 <img src="Docs/Images/quest-view.webp" alt="On the Quest: the robot arm carrying a cable to the training panel" width="800">
