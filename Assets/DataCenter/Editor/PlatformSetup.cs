@@ -142,19 +142,24 @@ namespace DataCenter.Editor
       #unity-webgl-logo, #unity-webxr-link, #unity-build-title, #unity-fullscreen-button, #enterar { display: none !important; }
       #entervr { pointer-events: auto; float: none !important; width: auto !important; height: auto !important; padding: 6px 16px; border-radius: 999px; background-color: #19d3ff !important; color: #061018; font: 700 12px/1.2 system-ui, sans-serif; letter-spacing: 1px; cursor: pointer; }
       #entervr:disabled { display: none !important; }
-      #dc-github { position: fixed; left: 16px; bottom: 16px; z-index: 10; display: flex; align-items: center; height: 44px; padding: 0 11px; border-radius: 999px; background: rgba(14, 19, 27, 0.9); border: 1px solid rgba(130, 150, 172, 0.45); color: #e6edf3; text-decoration: none; font: 600 13px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); transition: background-color 0.15s, border-color 0.15s, transform 0.15s; }
-      #dc-github svg { flex: none; }
-      #dc-github span { max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; transition: max-width 0.2s, opacity 0.2s, margin 0.2s; }
-      #dc-github:hover, #dc-github:focus-visible { background: rgba(25, 211, 255, 0.18); border-color: #19d3ff; color: #ffffff; transform: translateY(-2px); outline: none; }
-      #dc-github:hover span, #dc-github:focus-visible span { max-width: 140px; opacity: 1; margin-left: 8px; }
+      #dc-github { position: fixed; left: 16px; bottom: 16px; z-index: 10; display: flex; align-items: center; padding: 6px 10px; border-radius: 14px; background: rgba(10, 14, 20, 0.3); border: 1px solid rgba(255, 255, 255, 0.4); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: #ffffff; text-decoration: none; font: 700 14px/1.2 system-ui, -apple-system, sans-serif; letter-spacing: 0.2px; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.8); transition: background-color 0.15s, border-color 0.15s, box-shadow 0.15s, transform 0.15s; }
+      #dc-github img { display: block; height: 52px; width: auto; filter: drop-shadow(0 0 1px rgba(255, 255, 255, 0.95)) drop-shadow(0 0 2px rgba(255, 255, 255, 0.6)); }
+      #dc-github:hover, #dc-github:focus-visible { background: rgba(25, 211, 255, 0.18); border-color: #19d3ff; box-shadow: 0 0 0 3px rgba(25, 211, 255, 0.3); transform: translateY(-2px); outline: none; }
       #dc-github:active { transform: translateY(0); }
+      #dc-github span { max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; transition: max-width 0.2s, opacity 0.2s, margin 0.2s; }
+      #dc-github:hover span, #dc-github:focus-visible span { max-width: 180px; opacity: 1; margin: 0 6px 0 10px; }
+      @media (max-width: 820px) { #dc-github { padding: 4px 8px; left: 12px; bottom: 12px; } #dc-github img { height: 38px; } }
     </style>";
 
-        // Bottom-left link to the source code, opening in a new tab. An HTML link rather than a
-        // button inside the Unity canvas, so browsers treat it as a normal click, not a popup.
-        const string GitHubButton = @"    <a id=""dc-github"" href=""https://github.com/ZaidKamil1574/Robot-Teleoperation"" target=""_blank"" rel=""noopener noreferrer"" aria-label=""View the code on GitHub"" title=""View the code on GitHub"">
-      <svg viewBox=""0 0 24 24"" width=""22"" height=""22"" fill=""none"" stroke=""currentColor"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round"" aria-hidden=""true""><path d=""M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4""/><path d=""M9 18c-4.51 2-5-2-7-2""/></svg>
-      <span>View on GitHub</span>
+        // Bottom-left "View on Meta Quest" card linking to the repository, whose README walks through
+        // the Quest build, opening in a new tab. An HTML link rather than a button inside the Unity
+        // canvas, so browsers treat it as a normal click, not a popup. Its image is copied in from
+        // Docs/Images by PrepareForStaticHost.
+        const string ButtonImage = "view-on-quest.png";
+
+        const string GitHubButton = @"    <a id=""dc-github"" href=""https://github.com/ZaidKamil1574/Robot-Teleoperation"" target=""_blank"" rel=""noopener noreferrer"" aria-label=""View on Meta Quest: build instructions on GitHub"" title=""View on Meta Quest: build instructions on GitHub"">
+      <img src=""TemplateData/view-on-quest.png"" alt="""" width=""78"" height=""52"">
+      <span>View on Meta Quest</span>
     </a>";
         const long StaticHostSizeLimit = 20L * 1024 * 1024;
 
@@ -177,6 +182,11 @@ namespace DataCenter.Editor
             html = html.Replace(">VR</button>", ">ENTER VR</button>");
             html = html.Replace("</head>", PageStyle + "\n  </head>");
             html = html.Replace("</body>", GitHubButton + "\n  </body>");
+            var buttonImage = Path.Combine(Application.dataPath, "..", "Docs", "Images", ButtonImage);
+            if (File.Exists(buttonImage))
+                File.Copy(buttonImage, Path.Combine(output, "TemplateData", ButtonImage), true);
+            else
+                Debug.LogWarning($"[Data Center] {buttonImage} not found; the Meta Quest button will have no picture.");
             File.WriteAllText(page, html);
 
             long bytes = 0;
