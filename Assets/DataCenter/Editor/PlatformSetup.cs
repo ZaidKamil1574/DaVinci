@@ -142,7 +142,20 @@ namespace DataCenter.Editor
       #unity-webgl-logo, #unity-webxr-link, #unity-build-title, #unity-fullscreen-button, #enterar { display: none !important; }
       #entervr { pointer-events: auto; float: none !important; width: auto !important; height: auto !important; padding: 6px 16px; border-radius: 999px; background-color: #19d3ff !important; color: #061018; font: 700 12px/1.2 system-ui, sans-serif; letter-spacing: 1px; cursor: pointer; }
       #entervr:disabled { display: none !important; }
+      #dc-github { position: fixed; left: 16px; bottom: 16px; z-index: 10; display: flex; align-items: center; height: 44px; padding: 0 11px; border-radius: 999px; background: rgba(14, 19, 27, 0.9); border: 1px solid rgba(130, 150, 172, 0.45); color: #e6edf3; text-decoration: none; font: 600 13px/1 system-ui, -apple-system, sans-serif; letter-spacing: 0.5px; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35); transition: background-color 0.15s, border-color 0.15s, transform 0.15s; }
+      #dc-github svg { flex: none; }
+      #dc-github span { max-width: 0; overflow: hidden; white-space: nowrap; opacity: 0; transition: max-width 0.2s, opacity 0.2s, margin 0.2s; }
+      #dc-github:hover, #dc-github:focus-visible { background: rgba(25, 211, 255, 0.18); border-color: #19d3ff; color: #ffffff; transform: translateY(-2px); outline: none; }
+      #dc-github:hover span, #dc-github:focus-visible span { max-width: 140px; opacity: 1; margin-left: 8px; }
+      #dc-github:active { transform: translateY(0); }
     </style>";
+
+        // Bottom-left link to the source code, opening in a new tab. An HTML link rather than a
+        // button inside the Unity canvas, so browsers treat it as a normal click, not a popup.
+        const string GitHubButton = @"    <a id=""dc-github"" href=""https://github.com/ZaidKamil1574/Robot-Teleoperation"" target=""_blank"" rel=""noopener noreferrer"" aria-label=""View the code on GitHub"" title=""View the code on GitHub"">
+      <svg viewBox=""0 0 24 24"" width=""22"" height=""22"" fill=""none"" stroke=""currentColor"" stroke-width=""2"" stroke-linecap=""round"" stroke-linejoin=""round"" aria-hidden=""true""><path d=""M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.403 5.403 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4""/><path d=""M9 18c-4.51 2-5-2-7-2""/></svg>
+      <span>View on GitHub</span>
+    </a>";
         const long StaticHostSizeLimit = 20L * 1024 * 1024;
 
         /// <summary>Renames the compressed build files to .bin and points the page at them.</summary>
@@ -163,6 +176,7 @@ namespace DataCenter.Editor
                 "<meta name=\"description\" content=\"Teleoperate data center robots in the browser, or in VR on a Meta Quest.\">");
             html = html.Replace(">VR</button>", ">ENTER VR</button>");
             html = html.Replace("</head>", PageStyle + "\n  </head>");
+            html = html.Replace("</body>", GitHubButton + "\n  </body>");
             File.WriteAllText(page, html);
 
             long bytes = 0;
